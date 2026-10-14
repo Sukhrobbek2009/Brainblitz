@@ -8,107 +8,62 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="brainblitz.css">
 <style>
-  :root {
-    --violet: #7C3AED; --violet-edge: #5B21B6; --violet-soft: #A78BFA;
-    --lime: #A3E635; --lime-edge: #6FA314;
-    --night: #0E0720; --night-2: #1A0B3B; --ink: #1B1033; --muted: #6B6485;
-    --spring: cubic-bezier(.34, 1.56, .64, 1); --radius: 16px;
-  }
-  *, *::before, *::after { box-sizing: border-box; }
-  body {
-    margin: 0; min-height: 100vh; color: #fff; -webkit-font-smoothing: antialiased;
-    font-family: "Plus Jakarta Sans", system-ui, sans-serif;
-    background:
-      radial-gradient(50% 40% at 0% 0%, rgba(124,58,237,.35), transparent 70%),
-      radial-gradient(40% 35% at 100% 100%, rgba(163,230,53,.12), transparent 70%),
-      var(--night);
-    background-attachment: fixed;
-  }
-  h1, h2, h3, .logo, .btn { font-family: "Bricolage Grotesque", "Plus Jakarta Sans", sans-serif; }
-  a { color: inherit; text-decoration: none; }
-  button { font: inherit; color: inherit; }
-  :focus-visible { outline: 3px solid var(--lime); outline-offset: 3px; border-radius: 10px; }
-  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  body { min-height: 100vh; }
 
   /* 3D buttons */
-  .btn {
-    --face: var(--violet); --edge: var(--violet-edge); --text: #fff;
-    display: inline-flex; align-items: center; justify-content: center; gap: .5ch; padding: .7em 1.2em;
-    font-weight: 800; font-size: .95rem; letter-spacing: -.01em; color: var(--text); background: var(--face);
-    border: 0; border-radius: 14px; box-shadow: 0 4px 0 var(--edge), 0 10px 24px -6px rgba(124,58,237,.55); cursor: pointer;
-    transition: transform .35s var(--spring), box-shadow .2s, filter .2s;
-  }
-  .btn:hover { transform: translateY(-3px) scale(1.04); filter: brightness(1.08); box-shadow: 0 7px 0 var(--edge), 0 16px 28px -6px rgba(124,58,237,.6); }
-  .btn:active { transform: translateY(4px) scale(.99); box-shadow: 0 0 0 var(--edge); transition-duration: .08s; }
-  .btn-lime { --face: var(--lime); --edge: var(--lime-edge); --text: #1A2E05; box-shadow: 0 4px 0 var(--edge), 0 10px 24px -6px rgba(163,230,53,.4); }
-  .btn-lime:hover { box-shadow: 0 7px 0 var(--edge), 0 16px 28px -6px rgba(163,230,53,.5); }
-  .btn-ghost { --face: rgba(255,255,255,.08); --edge: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.18); box-shadow: 0 4px 0 var(--edge); }
-  .btn-ghost:hover { box-shadow: 0 7px 0 var(--edge); }
-  .btn-block { width: 100%; }
 
   /* Nav */
-  .nav {
-    position: sticky; top: 0; z-index: 50; min-height: 66px; background: rgba(18,8,40,.6);
-    -webkit-backdrop-filter: blur(18px) saturate(160%); backdrop-filter: blur(18px) saturate(160%);
-    border-bottom: 1px solid rgba(255,255,255,.09);
-  }
   .nav-inner { max-width: 1600px; margin: 0 auto; padding: 10px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
-  .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.4rem; letter-spacing: -.03em; transition: transform .35s var(--spring); }
-  .logo:hover { transform: scale(1.05) rotate(-2deg); }
-  .logo-mark { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--violet); box-shadow: 0 3px 0 var(--violet-edge); }
-  .logo-mark svg { width: 20px; height: 20px; }
-  .logo b { color: var(--lime); }
   .title-field {
     flex: 1 1 180px; max-width: 380px; min-width: 0; padding: 10px 14px; color: #fff;
     font: 800 1.05rem "Bricolage Grotesque", sans-serif; letter-spacing: -.01em;
-    background: rgba(255,255,255,.07); border: 2px solid transparent; border-radius: 12px;
+    background: rgba(255,255,255,.07); border: 2px solid transparent; border-radius: var(--r-md);
     transition: background .2s, border-color .2s, transform .35s var(--spring);
   }
   .title-field:hover { background: rgba(255,255,255,.12); }
   .title-field:focus { outline: none; background: rgba(255,255,255,.12); border-color: var(--lime); }
-  .save-status { margin-left: auto; font-size: .85rem; font-weight: 700; color: rgba(255,255,255,.6); white-space: nowrap; transition: color .3s; }
+  .save-status { margin-left: auto; font-size: .85rem; font-weight: 700; color: var(--t-soft); white-space: nowrap; transition: color .3s; }
   .save-status.saving { color: #FCD34D; }
   .save-status.saved { color: var(--lime); }
   .nav .btn { padding: .55em 1.1em; }
-  .nav .btn-big { padding: .8em 1.6em; font-size: 1.1rem; border-radius: 16px; box-shadow: 0 6px 0 var(--lime-edge), 0 14px 28px -8px rgba(163,230,53,.5); }
-  .nav .btn-big:hover { box-shadow: 0 9px 0 var(--lime-edge), 0 20px 32px -8px rgba(163,230,53,.6); }
-  .nav .btn-big:active { transform: translateY(6px) scale(.99); box-shadow: 0 0 0 var(--lime-edge); }
-  .count-pill { min-width: 22px; padding: 1px 7px; border-radius: 99px; background: var(--lime); color: #1A2E05; font-size: .78rem; text-align: center; }
+  .nav .btn-lg { padding: .8em 1.6em; font-size: 1.1rem; }
+  .count-pill { min-width: 22px; padding: 1px 7px; border-radius: 99px; background: var(--lime); color: var(--lime-ink); font-size: .78rem; text-align: center; }
   .swatches { display: flex; gap: 8px; padding: 6px 8px; background: rgba(255,255,255,.07); border-radius: 999px; }
   .sw { width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: var(--c); cursor: pointer; transition: transform .35s var(--spring), box-shadow .2s; }
   .sw:hover { transform: scale(1.3); }
   .sw[aria-checked="true"] { transform: scale(1.12); box-shadow: 0 0 0 2px var(--night), 0 0 0 4px #fff; }
-  .vis { display: flex; gap: 2px; padding: 4px; background: rgba(255,255,255,.07); border-radius: 12px; }
-  .vis button { padding: 6px 11px; border: 0; border-radius: 9px; background: transparent; color: rgba(255,255,255,.7); font-weight: 700; font-size: .82rem; cursor: pointer; transition: transform .35s var(--spring), background .2s, color .2s; }
+  .vis { display: flex; gap: 2px; padding: 4px; background: rgba(255,255,255,.07); border-radius: var(--r-md); }
+  .vis button { padding: 6px 11px; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--t-soft); font-weight: 700; font-size: .82rem; cursor: pointer; transition: transform .35s var(--spring), background .2s, color .2s; }
   .vis button:hover { transform: scale(1.06); color: #fff; }
   .vis button[aria-checked="true"] { background: var(--violet); color: #fff; box-shadow: 0 2px 0 var(--violet-edge); }
-  .ctl-label { font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.5); }
+  .ctl-label { font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--t-faint); }
   .ctl { display: flex; align-items: center; gap: 8px; }
 
   /* App shell */
   .app {
-    max-width: 1600px; margin: 0 auto; padding: 16px; height: calc(100vh - var(--nav-h, 66px)); height: calc(100dvh - var(--nav-h, 66px));
+    max-width: 1600px; margin: 0 auto; padding: 16px; height: calc(100vh - var(--nav-live, var(--nav-h))); height: calc(100dvh - var(--nav-live, var(--nav-h)));
     display: grid; grid-template-columns: 270px minmax(0, 1fr) 310px; gap: 16px;
   }
   .panel { min-height: 0; display: flex; flex-direction: column; border-radius: var(--radius); background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); }
   .panel-head { padding: 18px 18px 8px; display: flex; align-items: baseline; justify-content: space-between; }
   .panel-head h2 { margin: 0; font-size: 1.1rem; font-weight: 800; letter-spacing: -.02em; }
-  .panel-head span { font-size: .82rem; color: rgba(255,255,255,.55); font-weight: 600; }
+  .panel-head span { font-size: .82rem; color: var(--t-faint); font-weight: 600; }
   .scroll { overflow-y: auto; min-height: 0; flex: 1; }
 
   /* Left: question list */
   .qlist { list-style: none; margin: 0; padding: 8px 12px 12px; display: grid; gap: 10px; }
-  .qitem { position: relative; display: grid; grid-template-columns: 22px 1fr 28px; gap: 6px; align-items: center; border-radius: 14px; }
+  .qitem { position: relative; display: grid; grid-template-columns: 22px 1fr 28px; gap: 6px; align-items: center; border-radius: var(--r-md); }
   .qitem.dragging { opacity: .35; }
   .qitem.over-above::before, .qitem.over-below::after {
     content: ""; position: absolute; left: 0; right: 0; height: 4px; border-radius: 4px; background: var(--lime);
   }
   .qitem.over-above::before { top: -7px; } .qitem.over-below::after { bottom: -7px; }
-  .qnum { text-align: center; font: 800 .9rem "Bricolage Grotesque", sans-serif; color: rgba(255,255,255,.6); }
+  .qnum { text-align: center; font: 800 .9rem "Bricolage Grotesque", sans-serif; color: var(--t-soft); }
   .thumb {
     display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 10px; text-align: left; cursor: pointer;
-    background: #fff; color: var(--ink); border: 3px solid transparent; border-radius: 12px; position: relative;
+    background: #fff; color: var(--ink); border: 3px solid transparent; border-radius: var(--r-md); position: relative;
     transition: transform .35s var(--spring), box-shadow .25s, border-color .2s;
   }
   .thumb:hover { transform: translateY(-2px) scale(1.03); }
@@ -118,11 +73,11 @@
   .thumb .t.empty { color: #9A92B5; font-weight: 600; }
   .mini { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
   .mini i { height: 7px; border-radius: 3px; }
-  .warn { position: absolute; top: -5px; right: -5px; width: 13px; height: 13px; border-radius: 50%; background: #EF4444; border: 2px solid var(--night); box-shadow: 0 0 0 0 rgba(239,68,68,.6); animation: ping 2s ease-out infinite; }
+  .warn { position: absolute; top: -5px; right: -5px; width: 13px; height: 13px; border-radius: 50%; background: var(--danger-strong); border: 2px solid var(--night); box-shadow: 0 0 0 0 rgba(239,68,68,.6); animation: ping 2s ease-out infinite; }
   @keyframes ping { 70%, 100% { box-shadow: 0 0 0 7px rgba(239,68,68,0); } }
   .handle {
-    width: 28px; height: 40px; display: grid; place-items: center; padding: 0; background: none; border: 0; border-radius: 8px;
-    color: rgba(255,255,255,.5); font-size: 1.1rem; cursor: grab; touch-action: none; transition: color .2s, transform .35s var(--spring), background .2s;
+    width: 28px; height: 40px; display: grid; place-items: center; padding: 0; background: none; border: 0; border-radius: var(--r-sm);
+    color: var(--t-faint); font-size: 1.1rem; cursor: grab; touch-action: none; transition: color .2s, transform .35s var(--spring), background .2s;
   }
   .handle:hover { color: #fff; background: rgba(255,255,255,.1); transform: scale(1.15); }
   .handle:active { cursor: grabbing; }
@@ -141,13 +96,13 @@
   .q-text {
     width: 100%; resize: none; padding: 14px 16px; text-align: center; color: var(--ink);
     font: 800 clamp(1.4rem, 2.4vw, 2rem)/1.2 "Bricolage Grotesque", sans-serif; letter-spacing: -.02em;
-    background: #F5F2FF; border: 2px solid #E4DCFB; border-radius: 14px; transition: border-color .2s, box-shadow .3s, background .2s;
+    background: var(--field); border: 2px solid var(--field-edge); border-radius: var(--r-md); transition: border-color .2s, box-shadow .3s, background .2s;
   }
   .q-text::placeholder { color: #B7ABDD; }
   .q-text:focus { outline: none; background: #fff; border-color: var(--violet); box-shadow: 0 0 0 5px rgba(124,58,237,.18); }
   .drop {
     position: relative; margin-top: 14px; min-height: 150px; display: grid; place-items: center; text-align: center; overflow: hidden; cursor: pointer;
-    border: 2px dashed #CBBDF5; border-radius: 14px; background: #FAF8FF; color: var(--muted);
+    border: 2px dashed #CBBDF5; border-radius: var(--r-md); background: #FAF8FF; color: var(--muted);
     transition: border-color .2s, background .2s, transform .35s var(--spring);
   }
   .drop:hover, .drop.over, .drop:focus-within { border-color: var(--violet); background: #F3EEFF; transform: scale(1.01); }
@@ -156,32 +111,26 @@
   .drop .ph strong { color: var(--violet); }
   .drop img { width: 100%; max-height: 260px; object-fit: contain; background: #1B1033; display: block; }
   .drop .rm {
-    position: absolute; top: 10px; right: 10px; width: 34px; height: 34px; border: 0; border-radius: 10px; cursor: pointer;
+    position: absolute; top: 10px; right: 10px; width: 34px; height: 34px; border: 0; border-radius: var(--r-sm); cursor: pointer;
     background: rgba(14,7,32,.8); color: #fff; font-size: 1rem; transition: transform .35s var(--spring), background .2s;
   }
-  .drop .rm:hover { transform: scale(1.12) rotate(6deg); background: #DC2626; }
+  .drop .rm:hover { transform: scale(1.12) rotate(6deg); background: var(--danger); }
   [hidden] { display: none !important; }
-  .qhint { display: flex; align-items: flex-start; gap: 10px; margin: 0; padding: 12px 16px; border-radius: 14px; background: rgba(239,68,68,.14); border: 1px solid rgba(248,113,113,.45); color: #FECACA; font-weight: 600; font-size: .92rem; line-height: 1.45; }
-  .qhint::before { content: ""; flex: none; width: 10px; height: 10px; margin-top: 6px; border-radius: 50%; background: #EF4444; }
+  .qhint { display: flex; align-items: flex-start; gap: 10px; margin: 0; padding: 12px 16px; border-radius: var(--r-md); background: rgba(239,68,68,.14); border: 1px solid rgba(248,113,113,.45); color: #FECACA; font-weight: 600; font-size: .92rem; line-height: 1.45; }
+  .qhint::before { content: ""; flex: none; width: 10px; height: 10px; margin-top: 6px; border-radius: 50%; background: var(--danger-strong); }
   .qhint ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
 
-  .answers { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .answers { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
   .ans {
-    --bg: #D6293E; --edge: #9C1A2B; --fg: #fff;
-    display: flex; align-items: center; gap: 12px; min-height: 96px; padding: 14px; color: var(--fg); background: var(--bg);
-    border-radius: var(--radius); box-shadow: 0 5px 0 var(--edge), 0 14px 26px -12px var(--bg);
+    display: flex; align-items: center; gap: 12px; min-height: 96px; padding: 14px;
     transition: transform .35s var(--spring), box-shadow .3s;
   }
+  .ans .shape { width: 40px; height: 40px; font-size: 1.15rem; }
   .ans:hover, .ans:focus-within { transform: translateY(-3px) scale(1.015); }
-  .ans.blue { --bg: #1368CE; --edge: #0A468C; }
-  .ans.yellow { --bg: #FACC15; --edge: #B8920A; --fg: #3B2A00; }
-  .ans.green { --bg: #26890C; --edge: #1A5F08; }
-  .ans.correct { box-shadow: 0 5px 0 var(--edge), 0 0 0 4px #fff, 0 0 28px 6px rgba(255,255,255,.35); }
-  .shape { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; background: rgba(0,0,0,.22); font-size: 1.15rem; color: #fff; }
-  .ans.yellow .shape { background: rgba(59,42,0,.2); color: #3B2A00; }
+  .ans.correct { box-shadow: 0 var(--lip-lg) 0 var(--edge), 0 0 0 4px #fff, 0 0 28px 6px rgba(255,255,255,.35); }
   .ans input[type=text] {
     flex: 1; min-width: 0; padding: 10px 12px; color: var(--fg); font: 700 1.1rem "Plus Jakarta Sans", sans-serif;
-    background: rgba(0,0,0,.16); border: 2px solid transparent; border-radius: 12px; transition: background .2s, border-color .2s;
+    background: rgba(0,0,0,.16); border: 2px solid transparent; border-radius: var(--r-md); transition: background .2s, border-color .2s;
   }
   .ans.yellow input[type=text] { background: rgba(59,42,0,.1); }
   .ans input::placeholder { color: var(--fg); opacity: .65; }
@@ -201,21 +150,21 @@
 
   /* Right: settings */
   .settings { padding: 4px 18px 18px; display: grid; gap: 22px; }
-  .settings h3 { margin: 0 0 10px; font: 700 .78rem "Plus Jakarta Sans", sans-serif; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.6); }
+  .settings h3 { margin: 0 0 10px; font: 700 .78rem "Plus Jakarta Sans", sans-serif; letter-spacing: .1em; text-transform: uppercase; color: var(--t-soft); }
   .opts { display: grid; gap: 8px; }
   .opt {
     display: flex; align-items: center; gap: 12px; padding: 11px 14px; text-align: left; cursor: pointer; font-weight: 700;
-    background: rgba(255,255,255,.07); border: 2px solid transparent; border-radius: 14px;
+    background: rgba(255,255,255,.07); border: 2px solid transparent; border-radius: var(--r-md);
     transition: transform .35s var(--spring), background .2s, border-color .2s, box-shadow .2s;
   }
   .opt:hover { transform: translateX(4px) scale(1.02); background: rgba(255,255,255,.12); }
   .opt[aria-checked="true"] { background: rgba(124,58,237,.35); border-color: var(--violet-soft); box-shadow: 0 0 20px -4px rgba(124,58,237,.9); }
   .opt .ic { font-size: 1.4rem; }
-  .opt small { display: block; font-weight: 500; color: rgba(255,255,255,.6); font-size: .78rem; }
+  .opt small { display: block; font-weight: 500; color: var(--t-soft); font-size: .78rem; }
   .chips { display: flex; flex-wrap: wrap; gap: 10px; }
   .chip {
     min-width: 58px; padding: 9px 14px; cursor: pointer; font: 800 1rem "Bricolage Grotesque", sans-serif; color: #fff;
-    background: rgba(255,255,255,.09); border: 0; border-radius: 12px; box-shadow: 0 3px 0 rgba(255,255,255,.14);
+    background: rgba(255,255,255,.09); border: 0; border-radius: var(--r-md); box-shadow: 0 3px 0 rgba(255,255,255,.14);
     transition: transform .35s var(--spring), box-shadow .15s, background .2s;
   }
   .chip:hover { transform: translateY(-3px) scale(1.08); }
@@ -223,21 +172,12 @@
   .chip[aria-checked="true"] { background: var(--violet); box-shadow: 0 3px 0 var(--violet-edge), 0 8px 18px -6px rgba(124,58,237,.9); }
   .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .seg .chip { padding: 12px 8px; }
-  .seg .chip[aria-checked="true"] { background: var(--lime); color: #1A2E05; box-shadow: 0 3px 0 var(--lime-edge), 0 8px 18px -6px rgba(163,230,53,.6); }
+  .seg .chip[aria-checked="true"] { background: var(--lime); color: var(--lime-ink); box-shadow: 0 3px 0 var(--lime-edge), 0 8px 18px -6px rgba(163,230,53,.6); }
   .chip:disabled, .opt:disabled { opacity: .4; cursor: not-allowed; transform: none !important; }
-  .hint { margin: 8px 0 0; font-size: .8rem; color: rgba(255,255,255,.55); line-height: 1.4; }
+  .hint { margin: 8px 0 0; font-size: .8rem; color: var(--t-faint); line-height: 1.4; }
   .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,.1); }
   .actions .btn { padding: .6em .8em; font-size: .88rem; }
-  .btn-danger { --face: rgba(220,38,38,.18); --edge: rgba(220,38,38,.45); border: 1px solid rgba(248,113,113,.4); color: #FECACA; box-shadow: 0 4px 0 var(--edge); }
-  .btn-danger:hover { box-shadow: 0 7px 0 var(--edge); }
 
-  .toast {
-    position: fixed; left: 50%; bottom: 24px; z-index: 100; padding: 12px 20px; border-radius: 14px; font-weight: 700;
-    background: var(--lime); color: #1A2E05; box-shadow: 0 4px 0 var(--lime-edge), 0 18px 30px -10px rgba(0,0,0,.5);
-    transform: translate(-50%, 140%); transition: transform .5s var(--spring);
-  }
-  .toast.show { transform: translate(-50%, 0); }
-  .toast { max-width: min(92vw, 560px); text-align: center; }
 
   /* My Quizzes drawer */
   .scrim { position: fixed; inset: 0; z-index: 90; background: rgba(8,3,15,.6); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); opacity: 0; pointer-events: none; transition: opacity .3s; }
@@ -250,13 +190,14 @@
   .drawer.open { transform: none; visibility: visible; transition: transform .5s var(--spring); }
   .drawer-head { display: flex; align-items: center; justify-content: space-between; }
   .drawer-head h2 { margin: 0; font-size: 1.5rem; font-weight: 800; letter-spacing: -.03em; }
-  .x { width: 40px; height: 40px; border: 0; border-radius: 12px; background: rgba(255,255,255,.08); cursor: pointer; font-size: 1rem; transition: transform .35s var(--spring), background .2s; }
+  .x { width: 40px; height: 40px; border: 0; border-radius: var(--r-md); background: rgba(255,255,255,.08); cursor: pointer; font-size: 1rem; transition: transform .35s var(--spring), background .2s; }
   .x:hover { transform: scale(1.12) rotate(8deg); background: rgba(255,255,255,.16); }
+  .state-wrap { grid-column: 1 / -1; }
   .qz-grid { flex: 1; min-height: 0; overflow-y: auto; margin: 0; padding: 6px 4px 12px; list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-content: start; }
   .qz { position: relative; --cv: #7C3AED; }
   .qz-open {
     width: 100%; display: flex; flex-direction: column; padding: 0; overflow: hidden; text-align: left; cursor: pointer; color: var(--ink);
-    background: #fff; border: 3px solid transparent; border-radius: 16px; box-shadow: 0 16px 30px -18px var(--cv);
+    background: #fff; border: 3px solid transparent; border-radius: var(--r-lg); box-shadow: 0 16px 30px -18px var(--cv);
     transition: transform .4s var(--spring), box-shadow .3s;
   }
   .qz-open:hover { transform: translateY(-5px) rotate(-1deg) scale(1.03); box-shadow: 0 24px 36px -16px var(--cv); }
@@ -270,13 +211,18 @@
   .qz-body { display: block; padding: 10px 12px 12px; }
   .qz-body b { display: block; font: 800 1rem/1.2 "Bricolage Grotesque", sans-serif; word-break: break-word; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .qz-body small { display: block; margin-top: 5px; font-size: .75rem; font-weight: 600; color: var(--muted); }
-  .qz-tag { position: absolute; top: 8px; left: 8px; z-index: 1; padding: 3px 9px; border-radius: 99px; background: var(--lime); color: #1A2E05; font-size: .7rem; font-weight: 800; }
-  .qz-del { position: absolute; top: 8px; right: 8px; z-index: 1; min-width: 32px; height: 32px; padding: 0 8px; border: 0; border-radius: 10px; background: rgba(14,7,32,.75); color: #fff; font-size: .8rem; font-weight: 700; cursor: pointer; opacity: 0; transition: opacity .2s, transform .35s var(--spring), background .2s; }
+  .qz-tag { position: absolute; top: 8px; left: 8px; z-index: 1; padding: 3px 9px; border-radius: 99px; background: var(--lime); color: var(--lime-ink); font-size: .7rem; font-weight: 800; }
+  .qz-del { position: absolute; top: 8px; right: 8px; z-index: 1; min-width: 32px; height: 32px; padding: 0 8px; border: 0; border-radius: var(--r-sm); background: rgba(14,7,32,.75); color: #fff; font-size: .8rem; font-weight: 700; cursor: pointer; opacity: 0; transition: opacity .2s, transform .35s var(--spring), background .2s; }
   .qz:hover .qz-del, .qz:focus-within .qz-del, .qz-del.armed { opacity: 1; }
   .qz-del:hover { transform: scale(1.1); }
-  .qz-del.armed { background: #DC2626; }
+  .qz-del.armed { background: var(--danger); }
   @media (hover: none) { .qz-del { opacity: 1; } }
-  .qz-empty { margin: 0; padding: 24px; text-align: center; color: rgba(255,255,255,.6); }
+  .qz-host { position: absolute; top: 62px; right: 10px; z-index: 1; padding: 4px 11px; border-radius: 99px; background: var(--lime); color: var(--lime-ink); font: 800 .78rem "Bricolage Grotesque", sans-serif; box-shadow: 0 3px 0 var(--lime-edge); transition: transform .35s var(--spring); }
+  .qz-host:hover { transform: translateY(-2px) scale(1.1) rotate(-3deg); }
+  .qz-host:active { transform: translateY(2px); box-shadow: 0 0 0 var(--lime-edge); }
+  .drawer-links { display: flex; flex-wrap: wrap; gap: 8px 16px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.12); }
+  .drawer-links a { padding: 6px 4px; font-weight: 600; font-size: .9rem; color: var(--t-soft); transition: transform .35s var(--spring), color .2s; }
+  .drawer-links a:hover { color: var(--lime); transform: translateY(-2px); }
   @media (max-width: 420px) { .qz-grid { grid-template-columns: 1fr; } }
 
   @media (max-width: 1100px) {
@@ -292,13 +238,19 @@
     .title-field { max-width: none; }
   }
   @media (max-width: 560px) {
-    .answers { grid-template-columns: 1fr; }
+    .answers { grid-template-columns: minmax(0, 1fr); }
     .logo span.word { display: none; }
   }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition-duration: .01ms !important; } }
 </style>
 </head>
 <body>
+<div class="bg" aria-hidden="true">
+  <div class="blob" style="width:620px;height:620px;background:var(--violet);top:-200px;left:-140px"></div>
+  <div class="blob" style="width:520px;height:520px;background:#9333EA;bottom:-220px;right:8%;opacity:.5;animation-delay:-6s"></div>
+  <div class="blob" style="width:300px;height:300px;background:var(--lime);top:30%;right:-100px;opacity:.16;animation-delay:-3s"></div>
+  <div class="grain"></div>
+</div>
 
 <header class="nav">
   <div class="nav-inner">
@@ -324,7 +276,7 @@
     </div>
     <span class="save-status saved" id="status" aria-live="polite">Saved ✓</span>
     <button class="btn btn-ghost" id="mine" type="button" aria-haspopup="dialog">My Quizzes <span class="count-pill" id="mine-count">0</span></button>
-    <button class="btn btn-lime btn-big" id="host" type="button">Save &amp; Host</button>
+    <button class="btn btn-lime btn-lg" id="host" type="button">Save &amp; Host</button>
   </div>
 </header>
 
@@ -401,15 +353,17 @@
   <div class="drawer-head"><h2 id="drawer-title">My Quizzes</h2><button class="x" id="drawer-close" type="button" aria-label="Close">✕</button></div>
   <button class="btn btn-lime btn-block" id="new-quiz" type="button">+ New quiz</button>
   <ul class="qz-grid" id="qz-grid"></ul>
+  <nav class="drawer-links" aria-label="Elsewhere on BrainBlitz"><a href="index.html">🏠 Home</a><a href="index.html#join">🎟️ Join a game</a><a href="index.html#discover">🔥 Trending quizzes</a></nav>
 </aside>
 
+<script src="shared.js"></script>
 <script>
 (() => {
   const SHAPES = [
     { s: '▲', c: 'red', name: 'Red triangle' }, { s: '◆', c: 'blue', name: 'Blue diamond' },
     { s: '●', c: 'yellow', name: 'Yellow circle' }, { s: '■', c: 'green', name: 'Green square' },
   ];
-  const COLORS = { red: '#D6293E', blue: '#1368CE', yellow: '#FACC15', green: '#26890C' };
+  const COLORS = BB.ANSWER; // answer colours come from brainblitz.css
   const DB_KEY = 'brainblitz-quizzes', CUR_KEY = 'brainblitz-current', OLD_KEY = 'brainblitz-quiz';
   const $ = (id) => document.getElementById(id);
 
@@ -436,7 +390,9 @@
       if (old && Array.isArray(old.qs) && old.qs.length) quizzes.push({ ...newQuiz(), title: old.title || 'Untitled quiz', qs: old.qs });
     } catch {}
   }
-  let quiz = quizzes.find((z) => z.id === store.get(CUR_KEY)) || quizzes[0] || newQuiz();
+  const qp = new URLSearchParams(location.search); // ?id=… opens a quiz, ?new=1 starts one, ?mine=1 opens My Quizzes
+  let quiz = (qp.get('new') ? newQuiz() : null)
+    || quizzes.find((z) => z.id === (qp.get('id') || store.get(CUR_KEY))) || quizzes.find((z) => z.id === store.get(CUR_KEY)) || quizzes[0] || newQuiz();
   let cur = 0;
 
   /* ---------- persistence ---------- */
@@ -753,7 +709,7 @@
     quiz.vis = b.dataset.v; setChecked('vis', quiz.vis); changed();
     toast(quiz.vis === 'public' ? 'Public: anyone can find this quiz.' : 'Private: only you can see this quiz.');
   });
-  new ResizeObserver(() => document.documentElement.style.setProperty('--nav-h', document.querySelector('.nav').offsetHeight + 'px'))
+  new ResizeObserver(() => document.documentElement.style.setProperty('--nav-live', document.querySelector('.nav').offsetHeight + 'px'))
     .observe(document.querySelector('.nav'));
 
   $('host').addEventListener('click', () => {
@@ -761,7 +717,7 @@
     const bad = quiz.qs.findIndex((x) => !complete(x));
     if (bad >= 0) { select(bad); toast(`Saved. Question ${bad + 1} needs a little more before you can host.`, 4000); return; }
     toast('Saved! Opening your lobby…', 1500);
-    setTimeout(() => { location.href = 'lobby.html'; }, 700);
+    setTimeout(() => { location.href = BB.hostUrl(quiz.id); }, 700);
   });
 
   /* ---------- My Quizzes ---------- */
@@ -777,9 +733,36 @@
 
   function renderMine() {
     const items = [...quizzes].sort((a, b) => b.updated - a.updated);
+    $('new-quiz').hidden = !items.length; // the empty state has its own button
     if (!items.length) {
-      grid.replaceChildren(Object.assign(document.createElement('li'), { className: 'qz-empty', textContent: 'No saved quizzes yet. Start building and it will show up here.' }));
-      grid.firstChild.style.gridColumn = '1 / -1';
+      const li = document.createElement('li');
+      li.className = 'state-wrap';
+      li.innerHTML = `<div class="state">
+        <svg class="state-art" viewBox="0 0 220 170" role="img" aria-label="A stack of quiz cards with a lightning bolt">
+          <ellipse cx="110" cy="154" rx="72" ry="9" style="fill:rgba(0,0,0,.3)"/>
+          <g transform="rotate(-12 80 90)"><rect x="38" y="40" width="100" height="112" rx="16" style="fill:var(--violet-soft)"/></g>
+          <g transform="rotate(11 142 90)"><rect x="92" y="34" width="100" height="112" rx="16" style="fill:#EC4899"/></g>
+          <g transform="rotate(-3 112 92)">
+            <rect x="62" y="26" width="104" height="126" rx="16" style="fill:#fff"/>
+            <text x="114" y="82" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-weight="800" font-size="48" style="fill:var(--violet)">?</text>
+            <rect x="74" y="96" width="38" height="20" rx="7" style="fill:var(--ans-red)"/>
+            <rect x="116" y="96" width="38" height="20" rx="7" style="fill:var(--ans-blue)"/>
+            <rect x="74" y="122" width="38" height="20" rx="7" style="fill:var(--ans-yellow)"/>
+            <rect x="116" y="122" width="38" height="20" rx="7" style="fill:var(--ans-green)"/>
+          </g>
+          <g transform="translate(166 30)"><circle cx="0" cy="3" r="22" style="fill:var(--lime-edge)"/><circle r="22" style="fill:var(--lime)"/>
+            <path d="M3 -13 L-9 3 H-1 L-4 14 L9 -3 H1 Z" style="fill:var(--lime-ink)"/></g>
+          <path d="M26 44 l3 8 8 3 -8 3 -3 8 -3 -8 -8 -3 8 -3z" style="fill:var(--lime)"/>
+          <path d="M196 96 l2.5 6 6 2.5 -6 2.5 -2.5 6 -2.5 -6 -6 -2.5 6 -2.5z" style="fill:#fff"/>
+          <path d="M44 130 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2z" style="fill:#fff"/>
+        </svg>
+        <h3>No quizzes yet</h3>
+        <p>Build a quiz in a couple of minutes. Everything you save lives right here, ready to host.</p>
+        <div class="state-actions"><button class="btn btn-lime btn-lg" id="first-quiz" type="button">Create your first quiz</button></div>
+      </div>`;
+      grid.replaceChildren(li);
+      li.querySelector('#first-quiz').addEventListener('click', startNew);
+      li.querySelector('#first-quiz').focus({ preventScroll: true });
       return;
     }
     grid.replaceChildren(...items.map((z) => {
@@ -793,6 +776,7 @@
           <span class="qz-cover"><span class="qz-n">${n}</span><small>${n === 1 ? 'question' : 'questions'}</small></span>
           <span class="qz-body"><b></b><small>${z.vis === 'public' ? '🌐 Public' : '🔒 Private'} · ${ago(z.updated)}</small></span>
         </button>
+        <a class="qz-host" href="lobby.html?quiz=${z.id}" aria-label="Host this quiz">▶ Host</a>
         <button class="qz-del" type="button" aria-label="Delete quiz">🗑</button>`;
       li.querySelector('b').textContent = z.title.trim() || 'Untitled quiz';
       li.querySelector('.qz-open').addEventListener('click', () => openQuiz(z));
@@ -826,15 +810,16 @@
     if (z === quiz) { dirty = false; clearTimeout(saveTimer); loadQuiz(quizzes[0] || newQuiz()); }
     renderMineCount(); renderMine(); toast('Quiz deleted');
   }
-  $('new-quiz').addEventListener('click', () => {
+  function startNew() {
     if (!pristine(quiz)) { flush(); loadQuiz(newQuiz()); }
     closeDrawer(); $('quiz-title').focus(); $('quiz-title').select();
-  });
+  }
+  $('new-quiz').addEventListener('click', startNew);
 
   function openDrawer() {
     renderMine();
     drawer.inert = false; drawer.classList.add('open'); scrim.classList.add('open');
-    $('drawer-close').focus();
+    ($('first-quiz') || $('drawer-close')).focus();
   }
   function closeDrawer() {
     drawer.classList.remove('open'); scrim.classList.remove('open'); drawer.inert = true;
@@ -853,6 +838,7 @@
   });
 
   syncBar(); renderMineCount();
+  if (qp.get('mine')) openDrawer();
   renderList(); renderCentre(); renderSettings();
 })();
 </script>

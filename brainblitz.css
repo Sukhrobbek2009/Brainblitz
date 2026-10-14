@@ -1,0 +1,138 @@
+/* BrainBlitz design system.
+   One source of truth for tokens and shared components. Linked first by index.html,
+   create.html and lobby.html; each page's own <style> only holds its layout. */
+
+:root {
+  /* brand */
+  --violet: #7C3AED; --violet-edge: #5B21B6; --violet-soft: #A78BFA;
+  --lime: #A3E635; --lime-edge: #6FA314; --lime-ink: #1A2E05;
+  /* surfaces */
+  --night: #0E0720; --night-2: #1A0B3B; --night-3: #1E0F45;
+  --ink: #1B1033; --muted: #6B6485; --card: #fff;
+  --field: #F5F2FF; --field-edge: #E4DCFB;
+  --surface: rgba(255,255,255,.08); --surface-2: rgba(255,255,255,.12); --border: rgba(255,255,255,.14);
+  /* text on dark: three steps only */
+  --t-strong: rgba(255,255,255,.88); --t-soft: rgba(255,255,255,.72); --t-faint: rgba(255,255,255,.55);
+  /* answer colours (same on every screen) */
+  --ans-red: #D6293E;    --ans-red-edge: #9C1A2B;
+  --ans-blue: #1368CE;   --ans-blue-edge: #0A468C;
+  --ans-yellow: #FACC15; --ans-yellow-edge: #B8920A; --ans-yellow-ink: #3B2A00;
+  --ans-green: #26890C;  --ans-green-edge: #1A5F08;
+  /* Blitzer rarity glows */
+  --rar-common: #94A3B8; --rar-rare: #3B82F6; --rar-epic: #A855F7; --rar-legendary: #F59E0B;
+  /* feedback */
+  --danger: #DC2626; --danger-strong: #EF4444; --danger-soft: #F87171; --danger-ink: #FCA5A5;
+  --good: #4ADE80; --warn: #FACC15;
+  /* shape */
+  --r-sm: 10px;   /* small controls, tags, icon buttons */
+  --r-md: 14px;   /* buttons, inputs, tabs, option rows */
+  --r-lg: 16px;   /* cards, tiles, large buttons */
+  --radius: var(--r-lg);
+  --lip: 4px;     /* 3D button bottom edge; --lip-lg for tiles and big buttons */
+  --lip-lg: 6px;
+  --shadow-card: 0 24px 50px -28px rgba(124,58,237,.9);
+  --spring: cubic-bezier(.34, 1.56, .64, 1);
+  --nav-h: 64px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; font-family: "Plus Jakarta Sans", system-ui, sans-serif; color: #fff; background: var(--night); -webkit-font-smoothing: antialiased; }
+h1, h2, h3, .logo, .btn { font-family: "Bricolage Grotesque", "Plus Jakarta Sans", sans-serif; }
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--lime); outline-offset: 3px; border-radius: var(--r-sm); }
+[hidden] { display: none !important; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.caps { font-size: .78rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+
+/* ---------- gradient mesh background ---------- */
+.bg { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.blob { position: absolute; border-radius: 50%; filter: blur(90px); opacity: .7; animation: drift 18s ease-in-out infinite alternate; }
+@keyframes drift { to { transform: translate3d(60px, 40px, 0) scale(1.12); } }
+.grain { position: absolute; inset: 0; opacity: .22; mix-blend-mode: overlay; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+
+/* ---------- logo + frosted nav ---------- */
+.logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.4rem; letter-spacing: -.03em; transition: transform .35s var(--spring); }
+.logo:hover { transform: scale(1.05) rotate(-2deg); }
+.logo-mark { width: 34px; height: 34px; display: grid; place-items: center; border-radius: var(--r-sm); background: var(--violet); box-shadow: 0 3px 0 var(--violet-edge); }
+.logo-mark svg { width: 20px; height: 20px; }
+.logo b { color: var(--lime); font-weight: 800; }
+.nav {
+  position: sticky; top: 0; z-index: 50; min-height: var(--nav-h); background: rgba(18, 8, 40, .6);
+  -webkit-backdrop-filter: blur(18px) saturate(160%); backdrop-filter: blur(18px) saturate(160%);
+  border-bottom: 1px solid var(--border);
+}
+
+/* ---------- tactile 3D buttons ---------- */
+.btn {
+  --face: var(--violet); --edge: var(--violet-edge); --text: #fff; --glow: rgba(124, 58, 237, .55);
+  display: inline-flex; align-items: center; justify-content: center; gap: .5ch; padding: .7em 1.2em;
+  font-weight: 800; font-size: .95rem; letter-spacing: -.01em; color: var(--text); background: var(--face);
+  border: 0; border-radius: var(--r-md); cursor: pointer;
+  box-shadow: 0 var(--lip) 0 var(--edge), 0 10px 24px -6px var(--glow);
+  transition: transform .35s var(--spring), box-shadow .2s ease, filter .2s ease;
+}
+.btn:hover { transform: translateY(-3px) scale(1.04); filter: brightness(1.08); box-shadow: 0 calc(var(--lip) + 3px) 0 var(--edge), 0 16px 28px -6px var(--glow); }
+.btn:active { transform: translateY(var(--lip)) scale(.99); box-shadow: 0 0 0 var(--edge), 0 2px 8px -2px var(--glow); transition-duration: .08s; }
+.btn-lime { --face: var(--lime); --edge: var(--lime-edge); --text: var(--lime-ink); --glow: rgba(163, 230, 53, .45); }
+.btn-ghost { --face: var(--surface); --edge: rgba(255,255,255,.16); --glow: transparent; border: 1px solid rgba(255,255,255,.18); }
+.btn-soft { --face: var(--field); --edge: var(--field-edge); --text: var(--violet-edge); --glow: transparent; }  /* for white cards */
+.btn-danger { --face: rgba(220,38,38,.18); --edge: rgba(220,38,38,.45); --glow: transparent; --text: #FECACA; border: 1px solid rgba(248,113,113,.4); }
+.btn-sm { padding: .5em 1em; font-size: .88rem; }
+.btn-lg { --lip: var(--lip-lg); padding: .85em 1.6em; font-size: 1.1rem; border-radius: var(--r-lg); }
+.btn-block { width: 100%; }
+.btn:disabled, .btn:disabled:hover, .btn:disabled:active { opacity: .45; filter: grayscale(.5); transform: none; box-shadow: 0 var(--lip) 0 var(--edge); cursor: not-allowed; }
+
+/* ---------- answer tiles: the four colours, shared by the editor and the live game ---------- */
+.ans, .at {
+  --bg: var(--ans-red); --edge: var(--ans-red-edge); --fg: #fff;
+  color: var(--fg); background: var(--bg); border-radius: var(--r-lg);
+  box-shadow: 0 var(--lip-lg) 0 var(--edge), 0 14px 26px -12px var(--bg);
+}
+.ans.blue, .at.blue { --bg: var(--ans-blue); --edge: var(--ans-blue-edge); }
+.ans.yellow, .at.yellow { --bg: var(--ans-yellow); --edge: var(--ans-yellow-edge); --fg: var(--ans-yellow-ink); }
+.ans.green, .at.green { --bg: var(--ans-green); --edge: var(--ans-green-edge); }
+.ans .shape, .at .shape { display: grid; place-items: center; flex: none; border-radius: var(--r-md); background: rgba(0,0,0,.22); color: #fff; }
+.ans.yellow .shape, .at.yellow .shape { background: rgba(59,42,0,.2); color: var(--ans-yellow-ink); }
+
+/* ---------- toast ---------- */
+.toast {
+  position: fixed; left: 50%; bottom: 24px; z-index: 100; max-width: min(92vw, 560px); padding: 12px 20px; text-align: center;
+  border-radius: var(--r-md); font-weight: 700; background: var(--lime); color: var(--lime-ink);
+  box-shadow: 0 var(--lip) 0 var(--lime-edge), 0 18px 30px -10px rgba(0,0,0,.5);
+  transform: translate(-50%, 140%); opacity: 0; visibility: hidden;
+  transition: transform .5s var(--spring), opacity .3s, visibility 0s .5s;
+}
+.toast.show { transform: translate(-50%, 0); opacity: 1; visibility: visible; transition-delay: 0s; }
+
+/* ---------- states: empty, blocked, banner, skeleton ---------- */
+.state { display: grid; justify-items: center; gap: 10px; padding: 28px 20px; text-align: center; }
+.state-art { width: min(190px, 62%); height: auto; margin-bottom: 4px; overflow: visible; animation: float 3.6s ease-in-out infinite; }
+.state-emoji { font-size: 4.2rem; line-height: 1; filter: drop-shadow(0 10px 18px rgba(124,58,237,.45)); animation: float 3.2s ease-in-out infinite; }
+.state h3 { margin: 0; font-size: 1.5rem; font-weight: 800; line-height: 1.1; letter-spacing: -.03em; }
+.state p { margin: 0; max-width: 34ch; line-height: 1.55; color: var(--t-soft); }
+.state-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 10px; }
+.state.on-light { color: var(--ink); }
+.state.on-light p { color: var(--muted); }
+.state .tag { padding: 3px 12px; border-radius: 99px; background: var(--surface-2); font-size: .8rem; font-weight: 700; color: var(--t-strong); }
+.state.on-light .tag { background: var(--field); color: var(--violet-edge); }
+@keyframes float { 50% { transform: translateY(-8px) rotate(-3deg); } }
+
+.banner { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border: 1px solid; border-radius: var(--r-md); font-weight: 700; font-size: .92rem; line-height: 1.35; }
+.banner small { display: block; font-weight: 500; opacity: .85; }
+.banner-warn { background: rgba(250,204,21,.14); border-color: rgba(250,204,21,.5); color: #FDE68A; }
+.banner-good { background: rgba(74,222,128,.14); border-color: rgba(74,222,128,.5); color: #BBF7D0; }
+.banner-bad  { background: rgba(239,68,68,.14); border-color: rgba(248,113,113,.5); color: #FECACA; }
+.banner.on-light.banner-warn { background: #FEF3C7; border-color: #FCD34D; color: #78350F; }
+.banner.on-light.banner-good { background: #DCFCE7; border-color: #86EFAC; color: #14532D; }
+.banner.on-light.banner-bad  { background: #FEE2E2; border-color: #FCA5A5; color: #7F1D1D; }
+.spinner { flex: none; width: 18px; height: 18px; border: 3px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.skeleton { position: relative; overflow: hidden; border-radius: var(--r-sm); background: var(--surface); }
+.skeleton::after { content: ""; position: absolute; inset: 0; transform: translateX(-100%); animation: sk-slide 1.4s ease-in-out infinite;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.18), transparent); }
+@keyframes sk-slide { to { transform: translateX(100%); } }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition-duration: .01ms !important; } }

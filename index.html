@@ -8,84 +8,20 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="brainblitz.css">
 <style>
-  :root {
-    --violet: #7C3AED;
-    --violet-edge: #5B21B6;
-    --violet-soft: #A78BFA;
-    --lime: #A3E635;
-    --lime-edge: #6FA314;
-    --night: #0E0720;
-    --night-2: #1A0B3B;
-    --ink: #1B1033;
-    --muted: #6B6485;
-    --card: #ffffff;
-    --spring: cubic-bezier(.34, 1.56, .64, 1);
-    --radius: 16px;
-  }
-  *, *::before, *::after { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
-  body {
-    margin: 0;
-    font-family: "Plus Jakarta Sans", system-ui, sans-serif;
-    color: #fff;
-    background: var(--night);
-    -webkit-font-smoothing: antialiased;
-  }
-  h1, h2, .logo, .btn { font-family: "Bricolage Grotesque", "Plus Jakarta Sans", sans-serif; }
-  a { color: inherit; text-decoration: none; }
-  :focus-visible { outline: 3px solid var(--lime); outline-offset: 3px; border-radius: 10px; }
 
   /* ---------- 3D buttons ---------- */
-  .btn {
-    --face: var(--violet);
-    --edge: var(--violet-edge);
-    --text: #fff;
-    display: inline-flex; align-items: center; justify-content: center; gap: .5ch;
-    padding: .8em 1.4em;
-    font-weight: 800; font-size: 1rem; letter-spacing: -.01em;
-    color: var(--text);
-    background: var(--face);
-    border: 0; border-radius: 14px;
-    box-shadow: 0 4px 0 var(--edge), 0 10px 24px -6px rgba(124, 58, 237, .55);
-    cursor: pointer;
-    transition: transform .35s var(--spring), box-shadow .2s ease, filter .2s ease;
-  }
-  .btn:hover { transform: translateY(-3px) scale(1.04); filter: brightness(1.08); box-shadow: 0 7px 0 var(--edge), 0 16px 28px -6px rgba(124, 58, 237, .6); }
-  .btn:active { transform: translateY(4px) scale(.99); box-shadow: 0 0 0 var(--edge), 0 2px 8px -2px rgba(124, 58, 237, .5); transition-duration: .08s; }
-  .btn-lime { --face: var(--lime); --edge: var(--lime-edge); --text: #1A2E05; box-shadow: 0 4px 0 var(--edge), 0 10px 24px -6px rgba(163, 230, 53, .45); }
-  .btn-lime:hover { box-shadow: 0 7px 0 var(--edge), 0 16px 28px -6px rgba(163, 230, 53, .5); }
-  .btn-lime:active { box-shadow: 0 0 0 var(--edge), 0 2px 8px -2px rgba(163, 230, 53, .4); }
-  .btn-ghost {
-    --face: rgba(255,255,255,.08); --edge: rgba(255,255,255,.16);
-    box-shadow: 0 4px 0 var(--edge); border: 1px solid rgba(255,255,255,.18);
-  }
-  .btn-ghost:hover { box-shadow: 0 7px 0 var(--edge); }
-  .btn-ghost:active { box-shadow: 0 0 0 var(--edge); }
 
   /* ---------- Nav ---------- */
-  .nav {
-    position: sticky; top: 0; z-index: 50;
-    background: rgba(18, 8, 40, .55);
-    -webkit-backdrop-filter: blur(18px) saturate(160%);
-    backdrop-filter: blur(18px) saturate(160%);
-    border-bottom: 1px solid rgba(255,255,255,.09);
-  }
   .nav-inner {
     max-width: 1200px; margin: 0 auto; padding: 12px 24px;
     display: flex; align-items: center; gap: 32px;
   }
-  .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.4rem; letter-spacing: -.03em; transition: transform .35s var(--spring); }
-  .logo:hover { transform: scale(1.05) rotate(-2deg); }
-  .logo-mark {
-    width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center;
-    background: var(--violet); box-shadow: 0 3px 0 var(--violet-edge);
-  }
-  .logo-mark svg { width: 20px; height: 20px; }
-  .logo b { color: var(--lime); font-weight: 800; }
   .nav-links { display: flex; gap: 6px; margin-left: auto; }
   .nav-links a {
-    padding: 8px 14px; border-radius: 10px; font-weight: 600; font-size: .95rem; color: rgba(255,255,255,.78);
+    padding: 8px 14px; border-radius: var(--r-sm); font-weight: 600; font-size: .95rem; color: var(--t-soft);
     transition: transform .35s var(--spring), background .2s, color .2s;
   }
   .nav-links a:hover { color: #fff; background: rgba(255,255,255,.1); transform: translateY(-2px) scale(1.05); }
@@ -94,30 +30,27 @@
   /* ---------- Hero ---------- */
   .hero {
     position: relative; isolation: isolate; overflow: hidden;
-    min-height: calc(100vh - 62px); min-height: calc(100svh - 62px);
+    min-height: calc(100vh - var(--nav-h)); min-height: calc(100svh - var(--nav-h));
     display: grid; align-items: center;
     background: radial-gradient(120% 90% at 50% 0%, var(--night-2) 0%, var(--night) 70%);
   }
-  .blob { position: absolute; z-index: -2; border-radius: 50%; filter: blur(90px); opacity: .75; animation: drift 18s ease-in-out infinite alternate; }
   .blob.v1 { width: 640px; height: 640px; background: var(--violet); top: -180px; left: -140px; }
   .blob.v2 { width: 520px; height: 520px; background: #9333EA; bottom: -200px; right: 10%; opacity: .6; animation-delay: -6s; }
   .blob.l1 { width: 380px; height: 380px; background: var(--lime); top: 18%; right: -120px; opacity: .38; animation-delay: -3s; }
   .blob.l2 { width: 240px; height: 240px; background: var(--lime); bottom: 6%; left: 30%; opacity: .2; animation-delay: -9s; }
-  @keyframes drift { to { transform: translate3d(60px, 40px, 0) scale(1.12); } }
-  .grain {
-    position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: .22; mix-blend-mode: overlay;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  }
   .hero-inner {
     max-width: 1200px; margin: 0 auto; padding: 72px 24px 96px; width: 100%;
     display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 420px); gap: clamp(32px, 6vw, 88px); align-items: center;
   }
+  .hero .blob { z-index: -2; opacity: .75; }
+  .hero .grain { z-index: -1; }
+  .hero-inner > * { min-width: 0; }
   .eyebrow {
     display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 6px 8px; border-radius: 999px;
     background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14);
-    font-size: .85rem; font-weight: 600; color: rgba(255,255,255,.85);
+    font-size: .85rem; font-weight: 600; color: var(--t-strong);
   }
-  .eyebrow i { font-style: normal; background: var(--lime); color: #1A2E05; padding: 2px 8px; border-radius: 999px; font-weight: 700; font-size: .75rem; }
+  .eyebrow i { font-style: normal; background: var(--lime); color: var(--lime-ink); padding: 2px 8px; border-radius: 999px; font-weight: 700; font-size: .75rem; }
   h1 {
     margin: 22px 0 20px; font-weight: 800; line-height: .94; letter-spacing: -.045em;
     font-size: clamp(3.2rem, 8.4vw, 7rem); text-wrap: balance;
@@ -128,10 +61,9 @@
     background: var(--lime); opacity: .5; transform-origin: left; animation: underline .9s .5s var(--spring) both;
   }
   @keyframes underline { from { transform: scaleX(0); } }
-  .lede { max-width: 46ch; margin: 0 0 32px; font-size: 1.15rem; line-height: 1.6; color: rgba(255,255,255,.76); }
+  .lede { max-width: 46ch; margin: 0 0 32px; font-size: 1.15rem; line-height: 1.6; color: var(--t-soft); }
   .cta-row { display: flex; flex-wrap: wrap; gap: 14px; }
-  .cta-row .btn { padding: .95em 1.7em; font-size: 1.05rem; }
-  .proof { display: flex; align-items: center; gap: 12px; margin-top: 36px; font-size: .9rem; color: rgba(255,255,255,.65); }
+  .proof { display: flex; align-items: center; gap: 12px; margin-top: 36px; font-size: .9rem; color: var(--t-soft); }
   .avatars { display: flex; }
   .avatars span { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--night); margin-left: -8px; }
   .avatars span:first-child { margin-left: 0; }
@@ -149,11 +81,10 @@
   .pin-card h2 { margin: 0 0 4px; font-size: 1.5rem; font-weight: 800; letter-spacing: -.03em; }
   .pin-card p { margin: 0 0 22px; color: var(--muted); font-size: .95rem; }
   .pin-card label { display: block; margin-bottom: 8px; font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--violet); }
-  .btn:disabled, .btn:disabled:hover, .btn:disabled:active { opacity: .45; filter: grayscale(.5); transform: none; box-shadow: 0 4px 0 var(--edge); cursor: not-allowed; }
 
   /* join flow */
   .dots { display: flex; gap: 6px; margin-bottom: 20px; }
-  .dots span { height: 6px; width: 6px; border-radius: 99px; background: #E4DCFB; transition: width .4s var(--spring), background .3s; }
+  .dots span { height: 6px; width: 6px; border-radius: 99px; background: var(--field-edge); transition: width .4s var(--spring), background .3s; }
   .dots span.done { background: var(--violet-soft); }
   .dots span.on { width: 26px; background: var(--violet); }
   .flow { overflow: hidden; margin: -8px; padding: 8px; transition: height .45s var(--spring); }
@@ -165,7 +96,7 @@
   .pin-box, .field {
     width: 100%; min-width: 0; text-align: center; color: var(--ink);
     font: 800 1.9rem/1 "Bricolage Grotesque", sans-serif;
-    background: #F5F2FF; border: 2px solid #E4DCFB; border-radius: 12px;
+    background: var(--field); border: 2px solid var(--field-edge); border-radius: var(--r-md);
     transition: border-color .2s, box-shadow .3s, transform .35s var(--spring), background .2s;
   }
   .pin-box { height: 62px; padding: 0; caret-color: var(--violet); }
@@ -176,15 +107,15 @@
   .pin-box:hover, .field:hover { transform: scale(1.04); }
   .pin-box.filled { border-color: #C4B5FD; background: #fff; }
   .pin-box:focus, .field:focus { outline: none; background: #fff; border-color: var(--violet); box-shadow: 0 0 0 5px rgba(124, 58, 237, .18); transform: translateY(-2px); }
-  .pin-box.bad { border-color: #F87171; background: #FEF2F2; }
-  .link-btn { display: block; margin: 12px auto 0; padding: 6px 10px; background: none; border: 0; border-radius: 8px; font: 600 .9rem "Plus Jakarta Sans", sans-serif; color: var(--muted); cursor: pointer; transition: transform .35s var(--spring), color .2s; }
+  .pin-box.bad { border-color: var(--danger-soft); background: #FEF2F2; }
+  .link-btn { display: block; margin: 12px auto 0; padding: 6px 10px; background: none; border: 0; border-radius: var(--r-sm); font: 600 .9rem "Plus Jakarta Sans", sans-serif; color: var(--muted); cursor: pointer; transition: transform .35s var(--spring), color .2s; }
   .link-btn:hover { color: var(--violet); transform: scale(1.06); }
 
   .blitzers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
   .blitzer {
     --glow: #94A3B8;
     display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; padding: 10px 2px 8px;
-    font: inherit; color: var(--ink); background: #F5F2FF; border: 2px solid transparent; border-radius: 14px; cursor: pointer;
+    font: inherit; color: var(--ink); background: var(--field); border: 2px solid transparent; border-radius: var(--r-md); cursor: pointer;
     transition: transform .35s var(--spring), box-shadow .3s, border-color .2s, background .2s;
   }
   .blitzer:hover { transform: translateY(-3px) scale(1.07); }
@@ -213,34 +144,34 @@
   @keyframes ripple { from { transform: scale(1); opacity: .6; } to { transform: scale(1.5); opacity: 0; } }
   .waiting h2 { font-size: 2rem; }
   .waiting p { margin: 6px 0 16px; }
-  .chip { display: inline-block; padding: 8px 18px; border-radius: 999px; background: #F5F2FF; font: 800 1.15rem "Bricolage Grotesque", sans-serif; color: var(--violet-edge); }
+  .chip { display: inline-block; padding: 8px 18px; border-radius: 999px; background: var(--field); font: 800 1.15rem "Bricolage Grotesque", sans-serif; color: var(--violet-edge); }
   .waiting small { display: block; margin-top: 14px; color: var(--muted); font-size: .85rem; }
-  .pin-card .btn { width: 100%; margin-top: 16px; padding: 1em; font-size: 1.15rem; }
-  .pin-error { min-height: 1.3em; margin-top: 10px; font-size: .88rem; font-weight: 600; color: #DC2626; text-align: center; }
-  .pin-card .foot { margin-top: 6px; padding-top: 16px; border-top: 1px dashed #E4DCFB; text-align: center; font-size: .88rem; color: var(--muted); }
+  .pin-card .btn { width: 100%; margin-top: 16px; }
+  .pin-error { min-height: 1.3em; margin-top: 10px; font-size: .88rem; font-weight: 600; color: var(--danger); text-align: center; }
+  .pin-card .foot { margin-top: 6px; padding-top: 16px; border-top: 1px dashed var(--field-edge); text-align: center; font-size: .88rem; color: var(--muted); }
   .pin-card .foot a { color: var(--violet); font-weight: 700; }
   .pin-card .foot a:hover { text-decoration: underline; }
   .shake { animation: shake .4s; }
   @keyframes shake { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
   .sticker {
     position: absolute; top: -18px; right: -14px; padding: 6px 14px; border-radius: 999px; transform: rotate(8deg);
-    background: var(--lime); color: #1A2E05; font: 800 .85rem "Bricolage Grotesque", sans-serif;
+    background: var(--lime); color: var(--lime-ink); font: 800 .85rem "Bricolage Grotesque", sans-serif;
     box-shadow: 0 3px 0 var(--lime-edge);
   }
-  .sticker::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 7px; border-radius: 50%; background: #1A2E05; animation: pulse 1.4s infinite; }
+  .sticker::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 7px; border-radius: 50%; background: var(--lime-ink); animation: pulse 1.4s infinite; }
   @keyframes pulse { 50% { opacity: .25; } }
 
   /* ---------- Game Modes bento ---------- */
-  .modes { position: relative; background: var(--night); padding: 112px 24px 128px; scroll-margin-top: 62px; }
+  .modes { position: relative; background: var(--night); padding: 112px 24px 128px; scroll-margin-top: var(--nav-h); }
   .modes::before {
     content: ""; position: absolute; inset: 0; pointer-events: none;
     background: radial-gradient(50% 40% at 85% 10%, rgba(124,58,237,.28), transparent 70%), radial-gradient(40% 30% at 5% 90%, rgba(163,230,53,.08), transparent 70%);
   }
-  .modes-inner { position: relative; max-width: 1200px; margin: 0 auto; }
+  .modes-inner { position: relative; max-width: 1152px; margin: 0 auto; }
   .section-head { max-width: 640px; margin-bottom: 48px; }
   .kicker { font-weight: 700; font-size: .8rem; letter-spacing: .12em; text-transform: uppercase; color: var(--lime); }
   .section-head h2 { margin: 10px 0 14px; font-size: clamp(2.2rem, 5vw, 3.6rem); font-weight: 800; letter-spacing: -.04em; line-height: 1; }
-  .section-head p { margin: 0; font-size: 1.1rem; line-height: 1.6; color: rgba(255,255,255,.7); }
+  .section-head p { margin: 0; font-size: 1.1rem; line-height: 1.6; color: var(--t-soft); }
 
   .bento {
     display: grid; gap: 20px;
@@ -284,7 +215,7 @@
     font-size: .8rem; font-weight: 700; background: rgba(0,0,0,.28); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
   }
   .tile h3 { position: relative; z-index: 1; margin: 0 0 6px; font: 800 1.6rem/1.1 "Bricolage Grotesque", sans-serif; letter-spacing: -.03em; }
-  .tile p { position: relative; z-index: 1; margin: 0; max-width: 34ch; font-size: .98rem; line-height: 1.45; color: rgba(255,255,255,.85); }
+  .tile p { position: relative; z-index: 1; margin: 0; max-width: 34ch; font-size: .98rem; line-height: 1.45; color: var(--t-strong); }
 
   .t-classic { grid-area: classic; --c1: #8B5CF6; --c2: #4C1D95; }
   .t-classic .emoji { font-size: 11rem; top: 28px; right: 36px; }
@@ -309,12 +240,12 @@
   }
 
   /* ---------- Trending quizzes ---------- */
-  .trending { background: var(--night); padding: 24px 0 112px; scroll-margin-top: 62px; }
+  .trending { background: var(--night); padding: 24px 0 112px; scroll-margin-top: var(--nav-h); }
   .trending-inner { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
   .row-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 32px; }
   .row-head .section-head { margin: 0; }
   .arrows { display: flex; gap: 10px; flex-shrink: 0; }
-  .arrows .btn { width: 46px; height: 46px; padding: 0; font-size: 1.2rem; border-radius: 12px; }
+  .arrows .btn { width: 46px; height: 46px; padding: 0; font-size: 1.2rem; border-radius: var(--r-md); }
   .rail {
     display: flex; gap: 20px; overflow-x: auto; padding: 12px max(24px, calc((100vw - 1200px) / 2 + 24px)) 40px;
     scroll-snap-type: x mandatory; scroll-padding-inline: max(24px, calc((100vw - 1200px) / 2 + 24px));
@@ -357,8 +288,8 @@
   .avatar { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: .75rem; font-weight: 800; color: #fff; background: var(--violet); }
 
   /* ---------- How it works ---------- */
-  .how { position: relative; overflow: hidden; background: linear-gradient(180deg, var(--night), #1E0F45); padding: 96px 24px; scroll-margin-top: 62px; }
-  .how-inner { max-width: 1200px; margin: 0 auto; }
+  .how { position: relative; overflow: hidden; background: linear-gradient(180deg, var(--night), var(--night-3)); padding: 96px 24px; scroll-margin-top: var(--nav-h); }
+  .how-inner { max-width: 1152px; margin: 0 auto; }
   .how .section-head { max-width: none; text-align: center; margin-inline: auto; }
   .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 0; padding: 0; list-style: none; counter-reset: s; }
   .step {
@@ -367,13 +298,13 @@
   }
   .step:hover { transform: translateY(-6px) scale(1.02); background: rgba(255,255,255,.1); }
   .num {
-    width: 56px; height: 56px; margin-bottom: 18px; display: grid; place-items: center; border-radius: 16px;
-    font: 800 1.8rem "Bricolage Grotesque", sans-serif; color: #1A2E05; background: var(--lime); box-shadow: 0 4px 0 var(--lime-edge);
+    width: 56px; height: 56px; margin-bottom: 18px; display: grid; place-items: center; border-radius: var(--r-lg);
+    font: 800 1.8rem "Bricolage Grotesque", sans-serif; color: var(--lime-ink); background: var(--lime); box-shadow: 0 4px 0 var(--lime-edge);
   }
   .step:nth-child(2) .num { background: #fff; color: var(--violet-edge); box-shadow: 0 4px 0 #BFB3E3; }
   .step:nth-child(3) .num { background: var(--violet); color: #fff; box-shadow: 0 4px 0 var(--violet-edge); }
   .step h3 { margin: 0 0 8px; font: 800 1.6rem "Bricolage Grotesque", sans-serif; letter-spacing: -.03em; }
-  .step p { margin: 0; line-height: 1.55; color: rgba(255,255,255,.72); }
+  .step p { margin: 0; line-height: 1.55; color: var(--t-soft); }
   .step:not(:last-child)::after {
     content: "→"; position: absolute; top: 50%; right: -20px; z-index: 2; width: 20px; text-align: center; transform: translateY(-50%);
     font-size: 1.4rem; font-weight: 800; color: var(--lime);
@@ -381,21 +312,23 @@
 
   /* ---------- Footer ---------- */
   .footer { background: #08030F; border-top: 1px solid rgba(255,255,255,.08); padding: 64px 24px 32px; }
-  .footer-inner { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1.4fr repeat(3, 1fr); gap: 40px; }
-  .footer .about { margin: 16px 0 20px; max-width: 30ch; line-height: 1.55; font-size: .95rem; color: rgba(255,255,255,.6); }
-  .footer h4 { margin: 0 0 14px; font-size: .8rem; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.5); }
+  .footer-inner { max-width: 1152px; margin: 0 auto; display: grid; grid-template-columns: 1.4fr repeat(3, 1fr); gap: 40px; }
+  .footer .about { margin: 16px 0 20px; max-width: 30ch; line-height: 1.55; font-size: .95rem; color: var(--t-soft); }
+  .footer h4 { margin: 0 0 14px; font-size: .8rem; letter-spacing: .1em; text-transform: uppercase; color: var(--t-faint); }
   .footer ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
-  .footer ul a { display: inline-block; color: rgba(255,255,255,.82); font-weight: 500; transition: transform .35s var(--spring), color .2s; }
+  .footer ul a { display: inline-block; color: var(--t-strong); font-weight: 500; transition: transform .35s var(--spring), color .2s; }
   .footer ul a:hover { color: var(--lime); transform: translateX(4px); }
   .social { display: flex; gap: 10px; }
   .social a {
-    width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; background: rgba(255,255,255,.08); color: #fff;
+    width: 40px; height: 40px; display: grid; place-items: center; border-radius: var(--r-md); background: rgba(255,255,255,.08); color: #fff;
     box-shadow: 0 3px 0 rgba(255,255,255,.12); transition: transform .35s var(--spring), background .2s, color .2s;
   }
-  .social a:hover { transform: translateY(-4px) rotate(-6deg) scale(1.1); background: var(--lime); color: #1A2E05; }
+  .social a:hover { transform: translateY(-4px) rotate(-6deg) scale(1.1); background: var(--lime); color: var(--lime-ink); }
   .social a:active { transform: translateY(2px); }
   .social svg { width: 18px; height: 18px; }
-  .legal { max-width: 1200px; margin: 48px auto 0; padding-top: 24px; border-top: 1px solid rgba(255,255,255,.08); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; font-size: .85rem; color: rgba(255,255,255,.5); }
+  .footer .soon { opacity: .4; cursor: not-allowed; }
+  .footer .soon:hover { transform: none; color: inherit; background: rgba(255,255,255,.08); }
+  .legal { max-width: 1152px; margin: 48px auto 0; padding-top: 24px; border-top: 1px solid rgba(255,255,255,.08); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; font-size: .85rem; color: var(--t-faint); }
 
   @media (max-width: 800px) {
     .steps { grid-template-columns: 1fr; }
@@ -406,9 +339,45 @@
   }
   @media (max-width: 560px) { .trending-inner { padding: 0 16px; } .how { padding: 72px 16px; } }
 
+  /* ---------- For Teachers ---------- */
+  .teachers { background: linear-gradient(180deg, var(--night-3), var(--night)); padding: 96px 24px 112px; scroll-margin-top: var(--nav-h); }
+  .teachers-inner { max-width: 1152px; margin: 0 auto; }
+  .teachers .section-head { margin-inline: auto; text-align: center; }
+  .tcards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .tcard {
+    display: flex; flex-direction: column; gap: 10px; padding: 28px; border-radius: var(--radius); background: #fff; color: var(--ink);
+    box-shadow: 0 24px 50px -28px rgba(124,58,237,.9); transition: transform .45s var(--spring), box-shadow .3s;
+  }
+  .tcard:hover, .tcard:focus-visible { transform: translateY(-8px) rotate(-1deg) scale(1.02); box-shadow: 0 34px 60px -24px rgba(124,58,237,1); }
+  .tcard:nth-child(2):hover { transform: translateY(-8px) rotate(1deg) scale(1.02); }
+  .tcard .ti { width: 56px; height: 56px; display: grid; place-items: center; border-radius: var(--r-lg); background: #F3EEFF; font-size: 1.8rem; transition: transform .45s var(--spring); }
+  .tcard:hover .ti { transform: scale(1.15) rotate(-8deg); }
+  .tcard h3 { margin: 6px 0 0; font: 800 1.5rem "Bricolage Grotesque", sans-serif; letter-spacing: -.03em; }
+  .tcard p { margin: 0; flex: 1; color: var(--muted); line-height: 1.55; }
+  .tcard .go { margin-top: 6px; font-weight: 800; color: var(--violet); }
+  @media (max-width: 800px) { .tcards { grid-template-columns: 1fr; } .teachers { padding: 72px 16px 88px; } }
+
+  /* ---------- states: skeleton cards, blocked join, reconnecting ---------- */
+  .qcard.skel { pointer-events: none; box-shadow: none; }
+  .qcard.skel .cover { background: linear-gradient(135deg, rgba(124,58,237,.4), rgba(76,29,149,.55)); }
+  .qcard.skel .cover::before, .qcard.skel .cover::after { display: none; }
+  .qcard.skel .sk-fill { position: absolute; inset: 0; border-radius: 0; background: transparent; }
+  .qcard.skel .sk-fill::after { background: linear-gradient(90deg, transparent, rgba(255,255,255,.22), transparent); }
+  .qcard.skel .qbody .skeleton { background: #EDE8FB; }
+  .qcard.skel .qbody .skeleton::after { background: linear-gradient(90deg, transparent, rgba(255,255,255,.85), transparent); }
+  .sk-line { display: block; }
+  .qcard.skel .creator { margin-top: 18px; }
+  .pin-card > .banner { margin-bottom: 14px; }
+  .pin-card .state { padding: 6px 0 0; }
+  .pin-card .state p { margin: 0; }
+  .pin-card .state h3 { color: var(--ink); }
+  .pin-card .state h3:focus { outline: none; }
+  .pin-card .state { padding-bottom: 12px; }
+  .pin-card .state .btn-lg { padding: .7em 1.3em; font-size: 1rem; }
+
   /* ---------- Responsive ---------- */
   @media (max-width: 900px) {
-    .hero-inner { grid-template-columns: 1fr; padding-top: 48px; }
+    .hero-inner { grid-template-columns: minmax(0, 1fr); padding-top: 48px; }
     .pin-card { transform: none; max-width: 480px; }
   }
   @media (max-width: 720px) {
@@ -429,32 +398,32 @@
     <a href="#" class="logo" aria-label="BrainBlitz home">
       <span class="logo-mark" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="#A3E635"><path d="M13.5 2 5 13.5h6L9.5 22 19 9.5h-6.2z"/></svg>
-      </span>
-      Brain<b>Blitz</b>
+      </span><span>Brain<b>Blitz</b></span>
     </a>
     <nav class="nav-links" aria-label="Primary">
       <a href="#discover">Discover</a>
       <a href="#modes">Game Modes</a>
       <a href="#teachers">For Teachers</a>
+      <a href="create.html">Create</a>
     </nav>
-    <a href="#host" class="btn btn-lime">Host a game</a>
+    <a href="create.html" class="btn btn-lime">Host a game</a>
   </div>
 </header>
 
 <main>
-  <section class="hero">
+  <section class="hero" id="join">
     <div class="blob v1"></div><div class="blob v2"></div>
     <div class="blob l1"></div><div class="blob l2"></div>
     <div class="grain"></div>
 
     <div class="hero-inner">
       <div>
-        <span class="eyebrow"><i>New</i> Team Blitz mode is live</span>
+        <span class="eyebrow"><i>New</i> Build, host and report in one place</span>
         <h1>Make learning <span class="hl">a game.</span></h1>
         <p class="lede">Live quizzes that get every student leaning in. Host in seconds, play on any device, and watch the whole room light up.</p>
         <div class="cta-row">
-          <a href="#host" class="btn">Host a game</a>
-          <a href="#discover" class="btn btn-ghost">Explore quizzes</a>
+          <a href="create.html" class="btn btn-lg">Host a game</a>
+          <a href="#discover" class="btn btn-ghost btn-lg">Explore quizzes</a>
         </div>
         <div class="proof">
           <div class="avatars" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
@@ -464,6 +433,7 @@
 
       <div class="pin-card" id="join-card">
         <span class="sticker">Live now</span>
+        <div class="banner on-light banner-warn" id="conn-banner" role="status" hidden></div>
         <div class="dots" aria-hidden="true"><span class="on"></span><span></span><span></span><span></span></div>
         <div class="flow" id="flow">
           <div class="track" id="track">
@@ -480,7 +450,7 @@
                 <input class="pin-box" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" autocomplete="off" aria-label="Digit 5">
                 <input class="pin-box" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" autocomplete="off" aria-label="Digit 6">
               </div>
-              <button class="btn" type="submit">Enter</button>
+              <button class="btn btn-lg" type="submit">Enter</button>
               <div class="pin-error" id="pin-error" role="alert"></div>
             </form>
 
@@ -489,7 +459,7 @@
               <p>This is how you'll appear on the big screen.</p>
               <label for="nick">Nickname</label>
               <input class="field" id="nick" type="text" maxlength="14" autocomplete="off" placeholder="e.g. QuizWhiz" data-focus>
-              <button class="btn" type="submit">Next</button>
+              <button class="btn btn-lg" type="submit">Next</button>
               <div class="pin-error" id="nick-error" role="alert"></div>
               <button class="link-btn" type="button" data-back>← Back</button>
             </form>
@@ -498,7 +468,7 @@
               <h2>Choose your Blitzer</h2>
               <p>Pick a buddy. Rarer ones glow brighter.</p>
               <div class="blitzers" id="blitzers" role="group" aria-label="Blitzers"></div>
-              <button class="btn" type="submit" id="avatar-go" disabled>Let's go</button>
+              <button class="btn btn-lg" type="submit" id="avatar-go" disabled>Let's go</button>
               <button class="link-btn" type="button" data-back>← Back</button>
             </form>
 
@@ -511,9 +481,13 @@
               <button class="link-btn" type="button" id="leave">Leave game</button>
             </div>
 
+            <div class="pane" id="state-pane" inert>
+              <div class="state on-light" id="state-box"></div>
+            </div>
+
           </div>
         </div>
-        <div class="foot">Want to run your own? <a href="#host">Host a game</a></div>
+        <div class="foot">Want to run your own? <a href="create.html">Host a game</a></div>
       </div>
     </div>
   </section>
@@ -526,31 +500,31 @@
         <p>Pick the vibe that fits your room, from a calm warm-up to a full-on classroom showdown.</p>
       </div>
       <div class="bento">
-        <a href="#host" class="tile t-classic">
+        <a href="lobby.html?mode=classic" class="tile t-classic">
           <span class="emoji" aria-hidden="true">🏆</span>
           <span class="tag">👥 2–500 players</span>
           <h3>Classic</h3>
           <p>The original live quiz. Answer fast, climb the podium, and see who takes the crown.</p>
         </a>
-        <a href="#host" class="tile t-team">
+        <a href="lobby.html?mode=team" class="tile t-team">
           <span class="emoji" aria-hidden="true">⚔️</span>
           <span class="tag">👥 4–200 players</span>
           <h3>Team Battle</h3>
           <p>Join forces and pool your points to beat the other side.</p>
         </a>
-        <a href="#host" class="tile t-gold">
+        <a href="lobby.html?mode=gold" class="tile t-gold">
           <span class="emoji" aria-hidden="true">⛏️</span>
           <span class="tag">👥 2–60 players</span>
           <h3>Gold Rush</h3>
           <p>Dig for treasure, then steal your rivals' loot.</p>
         </a>
-        <a href="#host" class="tile t-tower">
+        <a href="lobby.html?mode=tower" class="tile t-tower">
           <span class="emoji" aria-hidden="true">🏰</span>
           <span class="tag">👥 1–40 players</span>
           <h3>Tower Defense</h3>
           <p>Every right answer builds your defenses against the next wave.</p>
         </a>
-        <a href="#host" class="tile t-speed">
+        <a href="lobby.html?mode=speed" class="tile t-speed">
           <span class="emoji" aria-hidden="true">⚡</span>
           <span class="tag">👥 2–300 players</span>
           <h3>Speed Round</h3>
@@ -574,47 +548,60 @@
         </div>
       </div>
     </div>
-    <div class="rail" id="rail" tabindex="0" role="region" aria-label="Trending quizzes, scrollable">
-      <article class="qcard" style="--c1:#8B5CF6;--c2:#4C1D95">
-        <div class="cover"><span class="em" aria-hidden="true">🌍</span><div class="play"><a class="btn btn-lime" href="#host">▶ Play</a></div></div>
-        <div class="qbody"><h3>World Capitals Showdown</h3>
-          <ul class="meta"><li>📝 20 questions</li><li>🔥 48.2K plays</li></ul>
-          <div class="creator"><span class="avatar" style="background:#EC4899" aria-hidden="true">M</span>Ms. Alvarez</div></div>
+    <div class="rail" id="rail" tabindex="0" role="region" aria-label="Trending quizzes, scrollable" aria-busy="true">
+      <span class="sr" role="status">Loading trending quizzes…</span>
+      <article class="qcard skel" aria-hidden="true">
+        <div class="cover"><span class="skeleton sk-fill"></span></div>
+        <div class="qbody">
+          <span class="skeleton sk-line" style="width:78%;height:20px"></span>
+          <span class="skeleton sk-line" style="width:56%;height:14px;margin-top:12px"></span>
+          <div class="creator"><span class="skeleton" style="width:28px;height:28px;border-radius:50%"></span><span class="skeleton sk-line" style="width:92px;height:14px"></span></div>
+        </div>
       </article>
-      <article class="qcard" style="--c1:#EC4899;--c2:#9D174D">
-        <div class="cover"><span class="em" aria-hidden="true">🧪</span><div class="play"><a class="btn btn-lime" href="#host">▶ Play</a></div></div>
-        <div class="qbody"><h3>Periodic Table Panic</h3>
-          <ul class="meta"><li>📝 25 questions</li><li>🔥 31.7K plays</li></ul>
-          <div class="creator"><span class="avatar" style="background:#0EA5E9" aria-hidden="true">D</span>Dr. Okafor</div></div>
+      <article class="qcard skel" aria-hidden="true">
+        <div class="cover"><span class="skeleton sk-fill"></span></div>
+        <div class="qbody">
+          <span class="skeleton sk-line" style="width:78%;height:20px"></span>
+          <span class="skeleton sk-line" style="width:56%;height:14px;margin-top:12px"></span>
+          <div class="creator"><span class="skeleton" style="width:28px;height:28px;border-radius:50%"></span><span class="skeleton sk-line" style="width:92px;height:14px"></span></div>
+        </div>
       </article>
-      <article class="qcard" style="--c1:#F59E0B;--c2:#B45309">
-        <div class="cover"><span class="em" aria-hidden="true">🏛️</span><div class="play"><a class="btn btn-lime" href="#host">▶ Play</a></div></div>
-        <div class="qbody"><h3>Ancient Rome in 15 Minutes</h3>
-          <ul class="meta"><li>📝 15 questions</li><li>🔥 22.9K plays</li></ul>
-          <div class="creator"><span class="avatar" style="background:#7C3AED" aria-hidden="true">J</span>Mr. Jenkins</div></div>
+      <article class="qcard skel" aria-hidden="true">
+        <div class="cover"><span class="skeleton sk-fill"></span></div>
+        <div class="qbody">
+          <span class="skeleton sk-line" style="width:78%;height:20px"></span>
+          <span class="skeleton sk-line" style="width:56%;height:14px;margin-top:12px"></span>
+          <div class="creator"><span class="skeleton" style="width:28px;height:28px;border-radius:50%"></span><span class="skeleton sk-line" style="width:92px;height:14px"></span></div>
+        </div>
       </article>
-      <article class="qcard" style="--c1:#0EA5E9;--c2:#1E3A8A">
-        <div class="cover"><span class="em" aria-hidden="true">➗</span><div class="play"><a class="btn btn-lime" href="#host">▶ Play</a></div></div>
-        <div class="qbody"><h3>Mental Maths Mayhem</h3>
-          <ul class="meta"><li>📝 30 questions</li><li>🔥 67.5K plays</li></ul>
-          <div class="creator"><span class="avatar" style="background:#F59E0B" aria-hidden="true">P</span>Priya Nair</div></div>
+      <article class="qcard skel" aria-hidden="true">
+        <div class="cover"><span class="skeleton sk-fill"></span></div>
+        <div class="qbody">
+          <span class="skeleton sk-line" style="width:78%;height:20px"></span>
+          <span class="skeleton sk-line" style="width:56%;height:14px;margin-top:12px"></span>
+          <div class="creator"><span class="skeleton" style="width:28px;height:28px;border-radius:50%"></span><span class="skeleton sk-line" style="width:92px;height:14px"></span></div>
+        </div>
       </article>
-      <article class="qcard" style="--c1:#84CC16;--c2:#166534">
-        <div class="cover"><span class="em" aria-hidden="true">🦖</span><div class="play"><a class="btn btn-lime" href="#host">▶ Play</a></div></div>
-        <div class="qbody"><h3>Dinosaurs: Fact or Fossil?</h3>
-          <ul class="meta"><li>📝 12 questions</li><li>🔥 18.4K plays</li></ul>
-          <div class="creator"><span class="avatar" style="background:#EC4899" aria-hidden="true">T</span>Team Triassic</div></div>
+      <article class="qcard skel" aria-hidden="true">
+        <div class="cover"><span class="skeleton sk-fill"></span></div>
+        <div class="qbody">
+          <span class="skeleton sk-line" style="width:78%;height:20px"></span>
+          <span class="skeleton sk-line" style="width:56%;height:14px;margin-top:12px"></span>
+          <div class="creator"><span class="skeleton" style="width:28px;height:28px;border-radius:50%"></span><span class="skeleton sk-line" style="width:92px;height:14px"></span></div>
+        </div>
       </article>
-      <article class="qcard" style="--c1:#A855F7;--c2:#6B21A8">
-        <div class="cover"><span class="em" aria-hidden="true">🎬</span><div class="play"><a class="btn btn-lime" href="#host">▶ Play</a></div></div>
-        <div class="qbody"><h3>Name That Movie Quote</h3>
-          <ul class="meta"><li>📝 18 questions</li><li>🔥 40.1K plays</li></ul>
-          <div class="creator"><span class="avatar" style="background:#16A34A" aria-hidden="true">S</span>Sam Whitfield</div></div>
+      <article class="qcard skel" aria-hidden="true">
+        <div class="cover"><span class="skeleton sk-fill"></span></div>
+        <div class="qbody">
+          <span class="skeleton sk-line" style="width:78%;height:20px"></span>
+          <span class="skeleton sk-line" style="width:56%;height:14px;margin-top:12px"></span>
+          <div class="creator"><span class="skeleton" style="width:28px;height:28px;border-radius:50%"></span><span class="skeleton sk-line" style="width:92px;height:14px"></span></div>
+        </div>
       </article>
     </div>
   </section>
 
-  <section class="how" id="teachers" aria-labelledby="how-title">
+  <section class="how" id="how" aria-labelledby="how-title">
     <div class="how-inner">
       <div class="section-head">
         <span class="kicker">How it works</span>
@@ -627,42 +614,50 @@
       </ol>
     </div>
   </section>
+
+  <section class="teachers" id="teachers" aria-labelledby="teachers-title">
+    <div class="teachers-inner">
+      <div class="section-head">
+        <span class="kicker">For Teachers</span>
+        <h2 id="teachers-title">Turn any lesson into game night.</h2>
+        <p>Build a quiz, run it live and keep it for next time. Your quizzes are saved in this browser.</p>
+      </div>
+      <div class="tcards">
+        <a class="tcard" href="create.html"><span class="ti" aria-hidden="true">✏️</span><h3>Build a quiz</h3><p>Drag to reorder questions. Choose quiz, true/false or poll, set timers and double points.</p><span class="go">Open the editor →</span></a>
+        <a class="tcard" href="create.html?mine=1"><span class="ti" aria-hidden="true">📚</span><h3>My Quizzes</h3><p>Pick up where you left off. Every saved quiz keeps its cover colour and question count.</p><span class="go">See my quizzes →</span></a>
+        <a class="tcard" href="create.html?mine=1"><span class="ti" aria-hidden="true">🎮</span><h3>Host a game</h3><p>Pick a quiz, get a Game PIN, watch players join, then run it with a live leaderboard.</p><span class="go">Choose a quiz →</span></a>
+      </div>
+    </div>
+  </section>
 </main>
 
 <footer class="footer">
   <div class="footer-inner">
     <div>
       <a href="#" class="logo" aria-label="BrainBlitz home">
-        <span class="logo-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="#A3E635"><path d="M13.5 2 5 13.5h6L9.5 22 19 9.5h-6.2z"/></svg></span>
-        Brain<b>Blitz</b>
-      </a>
+        <span class="logo-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="#A3E635"><path d="M13.5 2 5 13.5h6L9.5 22 19 9.5h-6.2z"/></svg></span><span>Brain<b>Blitz</b></span>
+    </a>
       <p class="about">The live quiz game that makes learning something everyone wants to join.</p>
       <div class="social">
-        <a href="#" aria-label="X"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
-        <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></a>
-        <a href="#" aria-label="YouTube"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.6 7.2a2.5 2.5 0 0 0-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4A2.5 2.5 0 0 0 2.4 7.2C2 8.8 2 12 2 12s0 3.2.4 4.8a2.5 2.5 0 0 0 1.8 1.8C5.8 19 12 19 12 19s6.2 0 7.8-.4a2.5 2.5 0 0 0 1.8-1.8c.4-1.6.4-4.8.4-4.8s0-3.2-.4-4.8zM10 15V9l5.2 3z"/></svg></a>
-        <a href="#" aria-label="TikTok"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.6 2h-3.2v13.2a2.8 2.8 0 1 1-2.8-2.8c.3 0 .5 0 .8.1V9.2a6 6 0 1 0 5.2 5.9V8.6a7.4 7.4 0 0 0 4.3 1.4V6.8a4.3 4.3 0 0 1-4.3-4.8z"/></svg></a>
+        <a href="#" class="soon" title="Coming soon" aria-disabled="true" aria-label="X"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
+        <a href="#" class="soon" title="Coming soon" aria-disabled="true" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></a>
+        <a href="#" class="soon" title="Coming soon" aria-disabled="true" aria-label="YouTube"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.6 7.2a2.5 2.5 0 0 0-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4A2.5 2.5 0 0 0 2.4 7.2C2 8.8 2 12 2 12s0 3.2.4 4.8a2.5 2.5 0 0 0 1.8 1.8C5.8 19 12 19 12 19s6.2 0 7.8-.4a2.5 2.5 0 0 0 1.8-1.8c.4-1.6.4-4.8.4-4.8s0-3.2-.4-4.8zM10 15V9l5.2 3z"/></svg></a>
+        <a href="#" class="soon" title="Coming soon" aria-disabled="true" aria-label="TikTok"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.6 2h-3.2v13.2a2.8 2.8 0 1 1-2.8-2.8c.3 0 .5 0 .8.1V9.2a6 6 0 1 0 5.2 5.9V8.6a7.4 7.4 0 0 0 4.3 1.4V6.8a4.3 4.3 0 0 1-4.3-4.8z"/></svg></a>
       </div>
     </div>
-    <nav aria-label="Play"><h4>Play</h4><ul><li><a href="#">Join a game</a></li><li><a href="#discover">Discover quizzes</a></li><li><a href="#modes">Game modes</a></li><li><a href="#host">Host a game</a></li></ul></nav>
-    <nav aria-label="Teachers"><h4>Teachers</h4><ul><li><a href="#teachers">How it works</a></li><li><a href="create.html">Create a quiz</a></li><li><a href="#">Classroom reports</a></li><li><a href="#">Pricing</a></li></ul></nav>
-    <nav aria-label="Company"><h4>Company</h4><ul><li><a href="#">About</a></li><li><a href="#">Help centre</a></li><li><a href="#">Privacy</a></li><li><a href="#">Terms</a></li></ul></nav>
+    <nav aria-label="Play"><h4>Play</h4><ul><li><a href="#join">Join a game</a></li><li><a href="#discover">Discover quizzes</a></li><li><a href="#modes">Game modes</a></li><li><a href="create.html">Host a game</a></li></ul></nav>
+    <nav aria-label="Teachers"><h4>Teachers</h4><ul><li><a href="#how">How it works</a></li><li><a href="create.html">Create a quiz</a></li><li><a href="create.html?mine=1">My quizzes</a></li><li><a href="#" class="soon" title="Coming soon" aria-disabled="true">Pricing</a></li></ul></nav>
+    <nav aria-label="Company"><h4>Company</h4><ul><li><a href="#" class="soon" title="Coming soon" aria-disabled="true">About</a></li><li><a href="#" class="soon" title="Coming soon" aria-disabled="true">Help centre</a></li><li><a href="#" class="soon" title="Coming soon" aria-disabled="true">Privacy</a></li><li><a href="#" class="soon" title="Coming soon" aria-disabled="true">Terms</a></li></ul></nav>
   </div>
   <div class="legal"><span>© 2026 BrainBlitz. All rights reserved.</span><span>Made for curious minds.</span></div>
 </footer>
 
+<script src="shared.js"></script>
 <script>
   /* ---------- Join flow: PIN → nickname → Blitzer → waiting ---------- */
   (() => {
-    const BLITZERS = [
-      { e: '🐸', n: 'Hoppy', r: 'common' },   { e: '🐙', n: 'Octo', r: 'common' },
-      { e: '🐼', n: 'Pando', r: 'common' },   { e: '🦊', n: 'Foxy', r: 'common' },
-      { e: '🦉', n: 'Hootie', r: 'rare' },    { e: '🐧', n: 'Waddles', r: 'rare' },
-      { e: '🦖', n: 'Rexie', r: 'rare' },     { e: '🦄', n: 'Sparkle', r: 'epic' },
-      { e: '🐲', n: 'Ember', r: 'epic' },     { e: '🤖', n: 'Bolt', r: 'epic' },
-      { e: '🦁', n: 'Kingsley', r: 'legendary' }, { e: '🐉', n: 'Nova', r: 'legendary' },
-    ];
-    const GLOW = { common: '#94A3B8', rare: '#3B82F6', epic: '#A855F7', legendary: '#F59E0B' };
+    const BLITZERS = BB.BLITZERS;
+    const GLOW = BB.GLOW;
     const LABEL = { common: 'Common', rare: 'Rare', epic: 'Epic', legendary: 'Legendary' };
 
     const flow = document.getElementById('flow');
@@ -731,9 +726,41 @@
       };
       if (pin.length < 6) return fail('Enter all 6 digits.', boxes.find((b) => !b.value));
       if (!pin.startsWith('1')) return fail("Hmm, we can't find that game", boxes[5]);
+      const blocked = lobbyBlock(pin);
+      if (blocked) { state.pin = pin; return showBlocked(...blocked); }
       state.pin = pin;
       go(1);
     });
+
+    /* "full" and "already started": the lobby with this PIN publishes its state (see lobby.html) */
+    function lobbyBlock(pin) {
+      const st = window.BB && BB.lobbyStatus(pin);
+      if (!st) return null;
+      if (st.state !== 'lobby') return ['started', st];
+      if (st.count >= st.max) return ['full', st];
+      return null;
+    }
+    const stateBox = document.getElementById('state-box');
+    function showBlocked(kind, st) {
+      const full = kind === 'full';
+      stateBox.innerHTML = `<div class="state-emoji" aria-hidden="true">${full ? '🚪' : '🏁'}</div>
+        <span class="tag"></span><h3></h3><p></p>
+        <div class="state-actions"><button class="btn btn-lg" type="button" data-retry>Try another PIN</button><a class="btn btn-soft btn-lg" href="create.html">Host your own</a></div>`;
+      stateBox.querySelector('.tag').textContent = full ? `${st.count} of ${st.max} players` : (st.q && st.total ? `Question ${st.q} of ${st.total}` : 'In progress');
+      stateBox.querySelector('h3').textContent = full ? 'This game is full' : 'This game already started';
+      stateBox.querySelector('p').textContent = full
+        ? 'Every seat is taken. Ask your host to make room, or try a different PIN.'
+        : 'Players can\u2019t jump in mid-game. Ask your host to start a new round, or join another game.';
+      stateBox.querySelector('[data-retry]').addEventListener('click', () => { boxes.forEach((b) => setBox(b, '')); clearErr(); go(0); });
+      go(4);
+      stateBox.querySelector('h3').tabIndex = -1; setTimeout(() => stateBox.querySelector('h3').focus({ preventScroll: true }), 450);
+    }
+
+    const preview = new URLSearchParams(location.search).get('preview'); // design previews: full | started | reconnecting
+    /* arriving from the lobby (?pin=123456) or a #join link */
+    const qpin = (new URLSearchParams(location.search).get('pin') || '').replace(/\D/g, '');
+    if (qpin) fill(0, qpin.slice(0, 6));
+    if (qpin || location.hash === '#join') setTimeout(() => (boxes.find((b) => !b.value) || boxes[5]).focus({ preventScroll: true }), 300);
 
     /* Step 2: nickname */
     const nick = document.getElementById('nick');
@@ -769,18 +796,51 @@
     document.getElementById('avatar-form').addEventListener('submit', (e) => {
       e.preventDefault();
       if (!state.blitzer) return;
+      const blocked = lobbyBlock(state.pin); // the lobby may have filled up or started while you picked a Blitzer
+      if (blocked) return showBlocked(...blocked);
       const me = document.getElementById('me');
       me.textContent = state.blitzer.e;
       me.style.setProperty('--glow', GLOW[state.blitzer.r]);
       document.getElementById('me-name').textContent = state.nick;
       document.getElementById('me-pin').textContent = state.pin.slice(0, 3) + ' ' + state.pin.slice(3);
+      /* tell a lobby open in another tab (same PIN) that this player has joined */
+      try {
+        localStorage.setItem('brainblitz-join', JSON.stringify({ id: Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+          pin: state.pin, name: state.nick, emoji: state.blitzer.e, rarity: state.blitzer.r }));
+      } catch {}
       go(3);
+      joined = true; reconnecting = false; seenLobby = !!(window.BB && BB.lobbyStatus(state.pin));
     });
+
+    /* reconnecting banner: shows if the browser goes offline, or a lobby we could see stops answering */
+    const banner = document.getElementById('conn-banner');
+    let joined = false, reconnecting = false, seenLobby = false, bannerTimer = 0;
+    function setBanner(kind) {
+      clearTimeout(bannerTimer);
+      if (!kind) { banner.hidden = true; return; }
+      banner.hidden = false;
+      banner.className = 'banner on-light ' + (kind === 'back' ? 'banner-good' : 'banner-warn');
+      banner.innerHTML = kind === 'back'
+        ? '<span aria-hidden="true">✓</span><span>Back online<small>You\u2019re still in the game.</small></span>'
+        : '<span class="spinner" aria-hidden="true"></span><span>Reconnecting…<small>Hang tight. Your spot is saved.</small></span>';
+      if (kind === 'back') bannerTimer = setTimeout(() => setBanner(null), 2600);
+    }
+    function checkConnection() {
+      if (!joined || preview === 'reconnecting') return;
+      const st = window.BB && BB.lobbyStatus(state.pin);
+      if (st) seenLobby = true;
+      const lost = navigator.onLine === false || (seenLobby && !st);
+      if (lost && !reconnecting) { reconnecting = true; setBanner('reconnecting'); }
+      else if (!lost && reconnecting) { reconnecting = false; setBanner('back'); }
+    }
+    setInterval(checkConnection, 2000);
+    addEventListener('online', checkConnection); addEventListener('offline', checkConnection);
 
     /* Back + leave */
     document.querySelectorAll('[data-back]').forEach((b) => b.addEventListener('click', () => go(step - 1)));
     document.getElementById('leave').addEventListener('click', () => {
       Object.assign(state, { pin: '', nick: '', blitzer: null });
+      joined = false; reconnecting = false; setBanner(null);
       boxes.forEach((b) => setBox(b, ''));
       nick.value = '';
       grid.querySelectorAll('.blitzer').forEach((x) => x.setAttribute('aria-pressed', 'false'));
@@ -788,9 +848,47 @@
       clearErr();
       go(0);
     });
+
+    /* design previews: index.html?preview=full | started | reconnecting */
+    if (preview === 'full') showBlocked('full', { count: 40, max: 40 });
+    if (preview === 'started') showBlocked('started', { q: 3, total: 8 });
+    if (preview === 'reconnecting') {
+      state.nick = 'Rita'; state.blitzer = BLITZERS[11]; state.pin = '123456';
+      document.getElementById('me').textContent = state.blitzer.e;
+      document.getElementById('me').style.setProperty('--glow', GLOW[state.blitzer.r]);
+      document.getElementById('me-name').textContent = state.nick;
+      document.getElementById('me-pin').textContent = '123 456';
+      go(3); setBanner('reconnecting');
+    }
   })();
 
+  document.querySelectorAll('.soon').forEach((el) => el.addEventListener('click', (e) => e.preventDefault()));
   const rail = document.getElementById('rail');
+  const preview = new URLSearchParams(location.search).get('preview'); // loading | full | started | reconnecting (design previews)
+  if (window.BB && preview !== 'loading') {
+    const cards = BB.CATALOG.filter((z) => z.trending).map((z) => {
+      const card = document.createElement('article');
+      card.className = 'qcard';
+      card.style.setProperty('--c1', z.c1); card.style.setProperty('--c2', z.c2);
+      card.innerHTML = `
+        <div class="cover"><span class="em" aria-hidden="true">${z.emoji}</span><div class="play"><a class="btn btn-lime">▶ Play</a></div></div>
+        <div class="qbody"><h3></h3>
+          <ul class="meta"><li>📝 ${z.qs.length} questions</li><li>🔥 ${z.plays} plays</li></ul>
+          <div class="creator"><span class="avatar" aria-hidden="true"></span><span class="by"></span></div></div>`;
+      card.querySelector('.play a').href = BB.hostUrl(z.id);
+      card.querySelector('h3').textContent = z.title;
+      card.querySelector('.by').textContent = z.creator;
+      const av = card.querySelector('.avatar');
+      av.textContent = z.creator.replace(/^(Ms|Mr|Dr)\.?\s+/, '').charAt(0).toUpperCase();
+      av.style.background = z.avatar;
+      return card;
+    });
+    // the skeletons stay until the headline font is ready (so the cards don't jump), but never longer than a second
+    Promise.race([document.fonts ? document.fonts.ready : Promise.resolve(), new Promise((r) => setTimeout(r, 1000))]).then(() => {
+      rail.replaceChildren(...cards);
+      rail.removeAttribute('aria-busy');
+    });
+  }
   document.querySelectorAll('.arrows [data-dir]').forEach((b) =>
     b.addEventListener('click', () =>
       rail.scrollBy({ left: b.dataset.dir * 310, behavior: 'smooth' })));
