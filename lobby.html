@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lobby – BrainBlitz</title>
+<meta name="description" content="Host lobby: share the Game PIN and watch players join.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --violet: #7C3AED; --violet-edge: #5B21B6; --violet-soft: #A78BFA;
+    --lime: #A3E635; --lime-edge: #6FA314;
+    --night: #0E0720; --night-2: #1A0B3B; --ink: #1B1033; --muted: #6B6485;
+    --spring: cubic-bezier(.34, 1.56, .64, 1); --radius: 16px;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; color: #fff; -webkit-font-smoothing: antialiased; overflow-x: hidden;
+    font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+    background: radial-gradient(120% 90% at 50% 0%, var(--night-2) 0%, var(--night) 70%);
+  }
+  h1, h2, .logo, .btn, .pin, .big-num { font-family: "Bricolage Grotesque", "Plus Jakarta Sans", sans-serif; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 3px solid var(--lime); outline-offset: 3px; border-radius: 10px; }
+  [hidden] { display: none !important; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  /* mesh background */
+  .bg { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+  .blob { position: absolute; border-radius: 50%; filter: blur(90px); opacity: .7; animation: drift 18s ease-in-out infinite alternate; }
+  .b1 { width: 620px; height: 620px; background: var(--violet); top: -200px; left: -140px; }
+  .b2 { width: 520px; height: 520px; background: #9333EA; bottom: -220px; right: 8%; opacity: .55; animation-delay: -6s; }
+  .b3 { width: 360px; height: 360px; background: var(--lime); top: 24%; right: -120px; opacity: .3; animation-delay: -3s; }
+  .b4 { width: 240px; height: 240px; background: var(--lime); bottom: 10%; left: 24%; opacity: .16; animation-delay: -9s; }
+  @keyframes drift { to { transform: translate3d(60px, 40px, 0) scale(1.12); } }
+  .grain { position: absolute; inset: 0; opacity: .22; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+
+  /* 3D buttons */
+  .btn {
+    --face: var(--violet); --edge: var(--violet-edge); --text: #fff;
+    display: inline-flex; align-items: center; justify-content: center; gap: .5ch; padding: .65em 1.2em;
+    font-weight: 800; font-size: .95rem; letter-spacing: -.01em; color: var(--text); background: var(--face);
+    border: 0; border-radius: 14px; box-shadow: 0 4px 0 var(--edge), 0 10px 24px -6px rgba(124,58,237,.55); cursor: pointer;
+    transition: transform .35s var(--spring), box-shadow .2s, filter .2s;
+  }
+  .btn:hover { transform: translateY(-3px) scale(1.04); filter: brightness(1.08); box-shadow: 0 7px 0 var(--edge), 0 16px 28px -6px rgba(124,58,237,.6); }
+  .btn:active { transform: translateY(4px) scale(.99); box-shadow: 0 0 0 var(--edge); transition-duration: .08s; }
+  .btn-lime { --face: var(--lime); --edge: var(--lime-edge); --text: #1A2E05; box-shadow: 0 4px 0 var(--edge), 0 10px 24px -6px rgba(163,230,53,.4); }
+  .btn-lime:hover { box-shadow: 0 7px 0 var(--edge), 0 16px 28px -6px rgba(163,230,53,.5); }
+  .btn-ghost { --face: rgba(255,255,255,.08); --edge: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.18); box-shadow: 0 4px 0 var(--edge); }
+  .btn-ghost:hover { box-shadow: 0 7px 0 var(--edge); }
+  .btn:disabled, .btn:disabled:hover, .btn:disabled:active { opacity: .4; filter: grayscale(.6); transform: none; box-shadow: 0 6px 0 var(--edge); cursor: not-allowed; }
+
+  /* layout */
+  .screen { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+  .top { display: flex; align-items: center; gap: 16px; padding: 16px 24px; max-width: 1200px; width: 100%; margin: 0 auto; }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.4rem; letter-spacing: -.03em; transition: transform .35s var(--spring); }
+  .logo:hover { transform: scale(1.05) rotate(-2deg); }
+  .logo-mark { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--violet); box-shadow: 0 3px 0 var(--violet-edge); }
+  .logo-mark svg { width: 20px; height: 20px; }
+  .logo b { color: var(--lime); }
+  .quiz-chip { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; max-width: 50vw; padding: 8px 16px; border-radius: 999px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); font-weight: 700; font-size: .92rem; }
+  .quiz-chip i { flex: none; width: 12px; height: 12px; border-radius: 50%; background: var(--cv, var(--violet)); box-shadow: 0 0 10px var(--cv, var(--violet)); }
+  .quiz-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .quiz-chip small { flex: none; color: rgba(255,255,255,.6); font-weight: 600; }
+  .top .btn { padding: .5em 1em; font-size: .88rem; }
+
+  .stage { flex: 1; width: 100%; max-width: 1200px; margin: 0 auto; padding: 8px 24px 24px; display: flex; flex-direction: column; align-items: center; gap: 28px; }
+  .join-hint { margin: 8px 0 -12px; font-size: 1.1rem; font-weight: 600; color: rgba(255,255,255,.8); text-align: center; }
+  .join-hint b { color: var(--lime); }
+  .pin-row { display: flex; align-items: stretch; justify-content: center; flex-wrap: wrap; gap: 24px; }
+  .pin-card {
+    position: relative; padding: 18px clamp(24px, 5vw, 56px) 24px; text-align: center; color: var(--ink); background: #fff; border-radius: 24px;
+    box-shadow: 0 8px 0 #CFC3F5, 0 40px 80px -24px rgba(124,58,237,.9);
+    transition: transform .5s var(--spring);
+  }
+  .pin-card:hover { transform: translateY(-4px) rotate(-1deg) scale(1.02); }
+  .pin-label { font-size: .85rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--violet); }
+  .pin { margin: 2px 0 0; font-size: clamp(3.6rem, 13vw, 9rem); font-weight: 800; line-height: 1; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+  .copy { position: absolute; top: 12px; right: 12px; padding: 6px 12px; border: 0; border-radius: 10px; background: #F3EEFF; color: var(--violet-edge); font-weight: 700; font-size: .8rem; cursor: pointer; transition: transform .35s var(--spring), background .2s; }
+  .copy:hover { transform: scale(1.1) rotate(-3deg); background: #E4DCFB; }
+  .qr-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 18px; color: var(--ink); background: #fff; border-radius: 24px; box-shadow: 0 8px 0 #CFC3F5, 0 40px 80px -24px rgba(124,58,237,.9); transition: transform .5s var(--spring); }
+  .qr-card:hover { transform: translateY(-4px) rotate(1.5deg) scale(1.03); }
+  .qr-card svg { width: 148px; height: 148px; display: block; }
+  .qr-card small { font-weight: 700; color: var(--muted); }
+
+  .wall-wrap { width: 100%; flex: 1; }
+  .wall-empty { margin: 36px 0 0; text-align: center; color: rgba(255,255,255,.6); font-weight: 600; font-size: 1.1rem; }
+  .wall-empty .dots span { display: inline-block; animation: bob 1.2s infinite; }
+  .wall-empty .dots span:nth-child(2) { animation-delay: .15s; } .wall-empty .dots span:nth-child(3) { animation-delay: .3s; }
+  @keyframes bob { 40% { transform: translateY(-6px); } }
+  .wall { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+  .pl {
+    --glow: #94A3B8; display: flex; align-items: center; gap: 10px; padding: 7px 18px 7px 7px; border-radius: 999px;
+    background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.18); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    font: 800 1rem "Bricolage Grotesque", sans-serif; letter-spacing: -.01em;
+    animation: join .75s var(--spring) both; transition: transform .35s var(--spring);
+  }
+  .pl:hover { transform: translateY(-3px) scale(1.06) rotate(-1.5deg); }
+  .pl.fresh { box-shadow: 0 0 0 2px var(--lime), 0 0 24px 4px rgba(163,230,53,.45); }
+  .pl .av { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 50%; font-size: 1.5rem; background: radial-gradient(circle at 30% 25%, #fff, #EDE5FF); border: 2px solid var(--glow); box-shadow: 0 0 14px color-mix(in srgb, var(--glow) 70%, transparent); }
+  @keyframes join { from { transform: scale(.1) translateY(40px) rotate(-14deg); opacity: 0; } to { transform: none; opacity: 1; } }
+
+  /* bottom bar */
+  .bar {
+    position: sticky; bottom: 0; z-index: 10; display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap; padding: 14px 24px calc(14px + env(safe-area-inset-bottom));
+    background: rgba(18,8,40,.6); -webkit-backdrop-filter: blur(18px) saturate(160%); backdrop-filter: blur(18px) saturate(160%); border-top: 1px solid rgba(255,255,255,.1);
+  }
+  .counter { display: flex; align-items: center; gap: 12px; }
+  .counter .n { min-width: 2ch; font: 800 2.6rem/1 "Bricolage Grotesque", sans-serif; letter-spacing: -.04em; text-align: right; font-variant-numeric: tabular-nums; }
+  .counter .n.bump { animation: bump .45s var(--spring); }
+  @keyframes bump { 40% { transform: scale(1.4); color: var(--lime); } }
+  .counter .lbl { font-weight: 700; line-height: 1.2; }
+  .counter .lbl small { display: block; font-weight: 500; color: rgba(255,255,255,.65); }
+  .start { padding: .8em 2.6em; font-size: 1.5rem; border-radius: 18px; box-shadow: 0 7px 0 var(--lime-edge), 0 16px 30px -8px rgba(163,230,53,.5); }
+  .start:hover { box-shadow: 0 10px 0 var(--lime-edge), 0 22px 34px -8px rgba(163,230,53,.6); }
+  .start:active { transform: translateY(7px) scale(.99); box-shadow: 0 0 0 var(--lime-edge); }
+  .start.ready { animation: ready 1.6s ease-in-out infinite; }
+  @keyframes ready { 50% { transform: scale(1.04); } }
+
+  /* countdown + playing screens */
+  .center { flex: 1; display: grid; place-items: center; text-align: center; padding: 24px; }
+  .big-num { font-size: clamp(8rem, 35vw, 22rem); font-weight: 800; line-height: 1; color: var(--lime); text-shadow: 0 10px 0 var(--lime-edge), 0 0 80px rgba(163,230,53,.5); animation: slam .8s var(--spring); }
+  @keyframes slam { from { transform: scale(2.4) rotate(-8deg); opacity: 0; } to { transform: none; opacity: 1; } }
+  .center p { margin: 0; font-size: 1.2rem; color: rgba(255,255,255,.75); }
+  .center h1 { margin: 0 0 12px; font-size: clamp(2.6rem, 8vw, 5rem); font-weight: 800; letter-spacing: -.04em; line-height: 1; }
+  .center .row { display: flex; gap: 14px; justify-content: center; margin-top: 28px; flex-wrap: wrap; }
+
+  .toast { position: fixed; left: 50%; bottom: 100px; z-index: 100; padding: 10px 18px; border-radius: 14px; font-weight: 700; background: var(--lime); color: #1A2E05; box-shadow: 0 4px 0 var(--lime-edge); transform: translate(-50%, 200%); transition: transform .5s var(--spring); }
+  .toast.show { transform: translate(-50%, 0); }
+
+  @media (max-width: 640px) {
+    .top { padding: 12px 16px; flex-wrap: wrap; }
+    .quiz-chip { max-width: 100%; margin-left: 0; order: 3; }
+    .top .btn { margin-left: auto; }
+    .stage { padding: 8px 16px 16px; }
+    .qr-card svg { width: 112px; height: 112px; }
+    .start { width: 100%; }
+    .counter { width: 100%; justify-content: center; }
+  }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition-duration: .01ms !important; } }
+</style>
+</head>
+<body data-state="lobby">
+
+<div class="bg" aria-hidden="true">
+  <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="blob b4"></div>
+  <div class="grain"></div>
+</div>
+
+<!-- Screen: lobby -->
+<div class="screen" data-screen="lobby">
+  <header class="top">
+    <a href="index.html" class="logo" aria-label="BrainBlitz home">
+      <span class="logo-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="#A3E635"><path d="M13.5 2 5 13.5h6L9.5 22 19 9.5h-6.2z"/></svg></span>
+      Brain<b>Blitz</b>
+    </a>
+    <div class="quiz-chip"><i id="chip-dot"></i><span id="chip-title">Space Explorers</span><small id="chip-count"></small></div>
+    <a href="create.html" class="btn btn-ghost">Edit quiz</a>
+  </header>
+
+  <main class="stage">
+    <p class="join-hint">Join at <b>brainblitz.app</b> with the Game PIN</p>
+    <div class="pin-row">
+      <div class="pin-card">
+        <button class="copy" id="copy" type="button">Copy</button>
+        <div class="pin-label">Game PIN</div>
+        <div class="pin" id="pin" aria-label="Game PIN">000 000</div>
+      </div>
+      <div class="qr-card" role="img" aria-label="QR code placeholder">
+        <svg id="qr" viewBox="0 0 29 29" shape-rendering="crispEdges" aria-hidden="true"></svg>
+        <small>Scan to join</small>
+      </div>
+    </div>
+
+    <div class="wall-wrap">
+      <p class="wall-empty" id="empty">Waiting for players<span class="dots" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span></p>
+      <ul class="wall" id="wall" aria-label="Players in the lobby"></ul>
+    </div>
+  </main>
+
+  <div class="bar">
+    <div class="counter">
+      <span class="n" id="count">0</span>
+      <span class="lbl"><span id="count-lbl">players</span><small id="count-hint">Need 3 to start</small></span>
+    </div>
+    <button class="btn btn-lime start" id="start" type="button" disabled>Start</button>
+  </div>
+</div>
+
+<!-- Screen: countdown -->
+<div class="screen" data-screen="countdown" hidden>
+  <div class="center"><div><p>Get ready…</p><div class="big-num" id="cd" aria-live="assertive">3</div></div></div>
+</div>
+
+<!-- Screen: playing (placeholder for the question flow) -->
+<div class="screen" data-screen="playing" hidden>
+  <div class="center">
+    <div>
+      <h1>Game on! 🎉</h1>
+      <p><span id="play-n">0</span> players are locked in and <span id="play-q">the first question</span> is up next.</p>
+      <div class="row">
+        <button class="btn btn-ghost" id="back" type="button">← Back to lobby</button>
+        <a class="btn btn-lime" href="index.html">Exit to home</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="sr" id="live" aria-live="polite"></div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const MIN_PLAYERS = 3, MAX_PLAYERS = 40;
+
+  const BLITZERS = [
+    ['🐸', 'common'], ['🐙', 'common'], ['🐼', 'common'], ['🦊', 'common'],
+    ['🦉', 'rare'], ['🐧', 'rare'], ['🦖', 'rare'], ['🦄', 'epic'], ['🐲', 'epic'],
+    ['🤖', 'epic'], ['🦁', 'legendary'], ['🐉', 'legendary'],
+  ];
+  const GLOW = { common: '#94A3B8', rare: '#3B82F6', epic: '#A855F7', legendary: '#F59E0B' };
+  const NAMES = ['QuizWhiz', 'PixelPanda', 'NebulaNate', 'TacoTuesday', 'BrainStorm', 'CosmicKiwi', 'ZoomZoom', 'CaptainCrunch',
+    'LunaTick', 'GalaxyGoat', 'TurboToast', 'WaffleKing', 'StarDust', 'RocketRaccoon', 'SneakyOwl', 'DizzyDino', 'CheeseWiz',
+    'MarsMallow', 'JetPackJo', 'QuirkyQuokka', 'AstroAnt', 'OrbitOtter', 'SolarSam', 'MoonPie', 'CometChaser', 'VoidVibes',
+    'NoodleNinja', 'PancakePilot', 'GigaGecko', 'FizzyFalcon', 'BananaBlitz', 'MeteorMia', 'SirLagsALot', 'PuddingPunk',
+    'HyperHippo', 'GlitchGoblin', 'SunnySnail', 'DoodleDrake', 'JellyJet', 'MangoMoon'];
+
+  /* ---------- the single source of truth for which screen shows ---------- */
+  let gameState = 'lobby'; // 'lobby' | 'countdown' | 'playing'
+  function setState(next) {
+    gameState = next;
+    document.body.dataset.state = gameState;
+    document.querySelectorAll('[data-screen]').forEach((el) => { el.hidden = el.dataset.screen !== gameState; });
+    if (gameState === 'lobby') scheduleJoin();
+  }
+
+  /* ---------- game data ---------- */
+  const players = [];
+  const pool = [...NAMES].sort(() => Math.random() - .5);
+  const pin = '1' + String(Math.floor(Math.random() * 1e5)).padStart(5, '0'); // starts with 1 so it works in the join flow
+  const pinText = pin.slice(0, 3) + ' ' + pin.slice(3);
+  $('pin').textContent = pinText;
+
+  /* quiz info from the editor, if there is one */
+  try {
+    const all = JSON.parse(localStorage.getItem('brainblitz-quizzes'));
+    const z = all.find((x) => x.id === localStorage.getItem('brainblitz-current'));
+    if (z) {
+      $('chip-title').textContent = z.title.trim() || 'Untitled quiz';
+      $('chip-count').textContent = `· ${z.qs.length} ${z.qs.length === 1 ? 'question' : 'questions'}`;
+      $('chip-dot').style.setProperty('--cv', z.color);
+      $('chip-dot').style.background = z.color;
+      $('play-q').textContent = z.qs[0]?.q?.trim() ? `“${z.qs[0].q.trim()}”` : 'the first question';
+    }
+  } catch {}
+
+  /* decorative QR placeholder (not a scannable code), seeded from the PIN */
+  (() => {
+    const N = 29, svg = $('qr');
+    let seed = +pin;
+    const rnd = () => { seed |= 0; seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    const finder = (x, y) => [[0, 0], [N - 7, 0], [0, N - 7]].some(([fx, fy]) => x >= fx - 1 && x <= fx + 7 && y >= fy - 1 && y <= fy + 7);
+    let d = '';
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (!finder(x, y) && rnd() > .52) d += `M${x} ${y}h1v1h-1z`;
+    const eye = (x, y) => `<rect x="${x + .5}" y="${y + .5}" width="6" height="6" fill="none" stroke="#1B1033" stroke-width="1"/><rect x="${x + 2}" y="${y + 2}" width="3" height="3" fill="#7C3AED"/>`;
+    svg.innerHTML = `<path d="${d}" fill="#1B1033"/>${eye(0, 0)}${eye(N - 7, 0)}${eye(0, N - 7)}`;
+  })();
+
+  /* ---------- lobby ---------- */
+  const wall = $('wall'), startBtn = $('start');
+  function renderCounter(bump) {
+    const n = players.length;
+    $('count').textContent = n;
+    $('count-lbl').textContent = n === 1 ? 'player' : 'players';
+    const need = MIN_PLAYERS - n;
+    $('count-hint').textContent = need > 0 ? `Need ${need} more to start` : 'Ready when you are';
+    const was = startBtn.disabled;
+    startBtn.disabled = need > 0;
+    startBtn.classList.toggle('ready', need <= 0);
+    $('empty').hidden = n > 0;
+    if (bump) { const el = $('count'); el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+    if (was && !startBtn.disabled) $('live').textContent = `${n} players have joined. You can start the game.`;
+  }
+
+  function addPlayer() {
+    if (players.length >= MAX_PLAYERS) return false;
+    const [emoji, rarity] = BLITZERS[Math.floor(Math.random() * BLITZERS.length)];
+    const name = pool.pop() || 'Player' + (players.length + 1);
+    players.push({ name, emoji, rarity });
+    const li = document.createElement('li');
+    li.className = 'pl fresh';
+    li.style.setProperty('--glow', GLOW[rarity]);
+    li.innerHTML = '<span class="av" aria-hidden="true"></span><span class="nm"></span>';
+    li.querySelector('.av').textContent = emoji;
+    li.querySelector('.nm').textContent = name;
+    wall.append(li);
+    setTimeout(() => li.classList.remove('fresh'), 1400);
+    li.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    renderCounter(true);
+    return true;
+  }
+
+  /* a new player joins every 1 to 2 seconds while the lobby is showing */
+  let joinTimer;
+  function scheduleJoin() {
+    clearTimeout(joinTimer);
+    if (gameState !== 'lobby' || players.length >= MAX_PLAYERS) return;
+    joinTimer = setTimeout(() => {
+      if (gameState === 'lobby') addPlayer();
+      scheduleJoin();
+    }, players.length === 0 ? 700 : 1000 + Math.random() * 1000);
+  }
+
+  /* ---------- start → countdown → playing ---------- */
+  let cdTimer;
+  startBtn.addEventListener('click', () => {
+    if (players.length < MIN_PLAYERS) return;
+    clearTimeout(joinTimer);
+    setState('countdown');
+    let n = 3;
+    const tick = () => {
+      const el = $('cd');
+      el.textContent = n > 0 ? n : 'GO!';
+      el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+      if (n-- < 0) { setState('playing'); $('play-n').textContent = players.length; return; }
+      cdTimer = setTimeout(tick, 900);
+    };
+    tick();
+  });
+  $('back').addEventListener('click', () => { clearTimeout(cdTimer); setState('lobby'); });
+
+  $('copy').addEventListener('click', async () => {
+    let ok = false;
+    try { await navigator.clipboard.writeText(pin); ok = true; } catch {}
+    const t = $('toast');
+    t.textContent = ok ? `Copied PIN ${pinText}` : 'Couldn’t copy. Select the PIN instead.';
+    t.classList.add('show'); clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 1800);
+  });
+
+  renderCounter(false);
+  setState('lobby');
+})();
+</script>
+</body>
+</html>
