@@ -11,8 +11,15 @@
   --ink: #1B1033; --muted: #6B6485; --card: #fff;
   --field: #F5F2FF; --field-edge: #E4DCFB;
   --surface: rgba(255,255,255,.08); --surface-2: rgba(255,255,255,.12); --border: rgba(255,255,255,.14);
-  /* text on dark: three steps only */
+  /* page text: three steps (+ full strength). Flipped by the light theme. */
+  --page-text: #fff;
   --t-strong: rgba(255,255,255,.88); --t-soft: rgba(255,255,255,.72); --t-faint: rgba(255,255,255,.55);
+  --accent: var(--lime);              /* highlight used as TEXT: lime on dark, violet on light */
+  --focus: var(--lime);               /* keyboard focus ring */
+  --nav-bg: rgba(18, 8, 40, .6);
+  --ring: #fff;                       /* outline around the chosen / correct answer tile */
+  --shimmer: rgba(255,255,255,.18);
+  color-scheme: dark;
   /* answer colours (same on every screen) */
   --ans-red: #D6293E;    --ans-red-edge: #9C1A2B;
   --ans-blue: #1368CE;   --ans-blue-edge: #0A468C;
@@ -35,12 +42,43 @@
   --nav-h: 64px;
 }
 
+/* ---------- light theme: same tokens, flipped. Chosen with the toggle, remembered in localStorage (see theme.js) ---------- */
+:root[data-theme="light"] {
+  --night: #F7F4FF; --night-2: #ECE4FF; --night-3: #E1D6FF;
+  --page-text: var(--ink);
+  --surface: rgba(27,16,51,.05); --surface-2: rgba(27,16,51,.09); --border: rgba(27,16,51,.16);
+  --t-strong: rgba(27,16,51,.9); --t-soft: rgba(27,16,51,.74); --t-faint: rgba(27,16,51,.62);
+  --accent: var(--violet-edge);
+  --focus: var(--violet-edge);
+  --nav-bg: rgba(247, 244, 255, .78);
+  --ring: var(--ink);
+  --shimmer: rgba(255,255,255,.75);
+  --danger-ink: #B91C1C; --good: #15803D; --warn: #A16207;
+  color-scheme: light;
+}
+/* regions that stay dark in both themes (saturated cards, footer, overlays) re-declare the dark tokens */
+/* (the lobby's feedback screen, pause veil and host controls are dark zones too, so they are listed here) */
+.dark-zone, .screen.fb, .veil, .host-ctl, .footer {
+  --page-text: #fff; --surface: rgba(255,255,255,.08); --surface-2: rgba(255,255,255,.12); --border: rgba(255,255,255,.14);
+  --t-strong: rgba(255,255,255,.88); --t-soft: rgba(255,255,255,.72); --t-faint: rgba(255,255,255,.55);
+  --accent: var(--lime); --focus: var(--lime); --ring: #fff; --danger-ink: #FCA5A5; --good: #4ADE80; --warn: #FACC15;
+  color: #fff; color-scheme: dark;
+}
+/* the mesh blobs are quieter on a light page, so text on top of them keeps its contrast */
+:root[data-theme="light"] .blob { opacity: .34 !important; }
+
+/* white cards stay white in both themes, so they use the violet focus ring */
+.pin-card, .qcard, .tcard, .qcard-edit, .thumb, .drawer-card { --focus: var(--violet-edge); }
+
 *, *::before, *::after { box-sizing: border-box; }
-body { margin: 0; font-family: "Plus Jakarta Sans", system-ui, sans-serif; color: #fff; background: var(--night); -webkit-font-smoothing: antialiased; }
+body { margin: 0; font-family: "Plus Jakarta Sans", system-ui, sans-serif; color: var(--page-text); background: var(--night); -webkit-font-smoothing: antialiased; }
 h1, h2, h3, .logo, .btn { font-family: "Bricolage Grotesque", "Plus Jakarta Sans", sans-serif; }
 a { color: inherit; text-decoration: none; }
 button { font: inherit; color: inherit; }
-:focus-visible { outline: 3px solid var(--lime); outline-offset: 3px; border-radius: var(--r-sm); }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+/* coloured tiles: a dark ring with a white halo, so it shows on red, blue, yellow and green, in either theme */
+.at:focus-visible, .ans:focus-within { outline: 4px solid #1B1033; outline-offset: 3px; box-shadow: 0 var(--lip-lg) 0 var(--edge), 0 0 0 8px #fff; }
+.ans input:focus-visible, .ans .tick:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 [hidden] { display: none !important; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .caps { font-size: .78rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
@@ -57,9 +95,9 @@ button { font: inherit; color: inherit; }
 .logo:hover { transform: scale(1.05) rotate(-2deg); }
 .logo-mark { width: 34px; height: 34px; display: grid; place-items: center; border-radius: var(--r-sm); background: var(--violet); box-shadow: 0 3px 0 var(--violet-edge); }
 .logo-mark svg { width: 20px; height: 20px; }
-.logo b { color: var(--lime); font-weight: 800; }
+.logo b { color: var(--accent); font-weight: 800; }
 .nav {
-  position: sticky; top: 0; z-index: 50; min-height: var(--nav-h); background: rgba(18, 8, 40, .6);
+  position: sticky; top: 0; z-index: 50; min-height: var(--nav-h); background: var(--nav-bg);
   -webkit-backdrop-filter: blur(18px) saturate(160%); backdrop-filter: blur(18px) saturate(160%);
   border-bottom: 1px solid var(--border);
 }
@@ -76,9 +114,11 @@ button { font: inherit; color: inherit; }
 .btn:hover { transform: translateY(-3px) scale(1.04); filter: brightness(1.08); box-shadow: 0 calc(var(--lip) + 3px) 0 var(--edge), 0 16px 28px -6px var(--glow); }
 .btn:active { transform: translateY(var(--lip)) scale(.99); box-shadow: 0 0 0 var(--edge), 0 2px 8px -2px var(--glow); transition-duration: .08s; }
 .btn-lime { --face: var(--lime); --edge: var(--lime-edge); --text: var(--lime-ink); --glow: rgba(163, 230, 53, .45); }
-.btn-ghost { --face: var(--surface); --edge: rgba(255,255,255,.16); --glow: transparent; border: 1px solid rgba(255,255,255,.18); }
+.btn-ghost { --face: var(--surface); --edge: var(--border); --text: var(--page-text); --glow: transparent; border: 1px solid var(--border); }
 .btn-soft { --face: var(--field); --edge: var(--field-edge); --text: var(--violet-edge); --glow: transparent; }  /* for white cards */
 .btn-danger { --face: rgba(220,38,38,.18); --edge: rgba(220,38,38,.45); --glow: transparent; --text: #FECACA; border: 1px solid rgba(248,113,113,.4); }
+:root[data-theme="light"] .btn-danger { --face: #FEE2E2; --edge: #FCA5A5; --text: #991B1B; border-color: #FCA5A5; }
+:root[data-theme="light"] .dark-zone .btn-danger { --face: rgba(220,38,38,.18); --edge: rgba(220,38,38,.45); --text: #FECACA; border-color: rgba(248,113,113,.4); }
 .btn-sm { padding: .5em 1em; font-size: .88rem; }
 .btn-lg { --lip: var(--lip-lg); padding: .85em 1.6em; font-size: 1.1rem; border-radius: var(--r-lg); }
 .btn-block { width: 100%; }
@@ -127,12 +167,41 @@ button { font: inherit; color: inherit; }
 .banner.on-light.banner-warn { background: #FEF3C7; border-color: #FCD34D; color: #78350F; }
 .banner.on-light.banner-good { background: #DCFCE7; border-color: #86EFAC; color: #14532D; }
 .banner.on-light.banner-bad  { background: #FEE2E2; border-color: #FCA5A5; color: #7F1D1D; }
+:root[data-theme="light"] .banner-warn:not(.dark-zone *) { background: #FEF3C7; border-color: #FCD34D; color: #78350F; }
+:root[data-theme="light"] .banner-good:not(.dark-zone *) { background: #DCFCE7; border-color: #86EFAC; color: #14532D; }
+:root[data-theme="light"] .banner-bad:not(.dark-zone *)  { background: #FEE2E2; border-color: #FCA5A5; color: #7F1D1D; }
 .spinner { flex: none; width: 18px; height: 18px; border: 3px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .skeleton { position: relative; overflow: hidden; border-radius: var(--r-sm); background: var(--surface); }
 .skeleton::after { content: ""; position: absolute; inset: 0; transform: translateX(-100%); animation: sk-slide 1.4s ease-in-out infinite;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,.18), transparent); }
+  background: linear-gradient(90deg, transparent, var(--shimmer), transparent); }
 @keyframes sk-slide { to { transform: translateX(100%); } }
 
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition-duration: .01ms !important; } }
+/* ---------- skip link: first tab stop, only visible when focused ---------- */
+.skip-link { position: fixed; top: 8px; left: 8px; z-index: 200; padding: 12px 18px; border-radius: var(--r-md); background: var(--lime); color: var(--lime-ink); font: 800 1rem "Bricolage Grotesque", sans-serif; transform: translateY(-200%); }
+.skip-link:focus { transform: none; outline: 3px solid var(--ink); outline-offset: 2px; }
+main:focus { outline: none; }
+
+/* ---------- theme toggle: a round icon button, same in every nav ---------- */
+.theme-toggle { flex: none; display: inline-grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 1px solid var(--border); border-radius: 50%; background: var(--surface); color: var(--page-text); cursor: pointer; transition: transform .35s var(--spring), background .2s; }
+.theme-toggle:hover { transform: rotate(-12deg) scale(1.1); background: var(--surface-2); }
+.theme-toggle svg { width: 22px; height: 22px; }
+.theme-toggle .i-sun { display: none; }
+:root[data-theme="light"] .theme-toggle .i-sun { display: block; }
+:root[data-theme="light"] .theme-toggle .i-moon { display: none; }
+
+/* ---------- touch: every control is at least 44px on a phone ---------- */
+@media (max-width: 700px), (pointer: coarse) {
+  .btn, .btn-sm { min-height: 44px; }
+  .logo { min-height: 44px; min-width: 44px; }
+}
+
+/* reduced motion: no animation, no springy hovers, no smooth scrolling (confetti is switched off in lobby.html) */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+  *, *::before, *::after { transition-delay: 0s !important; }
+  /* springy hovers: the colour change stays, the movement goes */
+  :is(a, button, label, li):hover,
+  :is(.tile, .qcard, .tcard, .step, .stat, .rq, .pl, .thumb, .ans, .drop, .opt, .chip, .blitzer, .qz, .at, .sw):hover { transform: none !important; }
+}

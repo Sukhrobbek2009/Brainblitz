@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0E0720">
+<title>Log in – BrainBlitz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="brainblitz.css">
+<style>
+  body { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
+  .card { width: 100%; max-width: 420px; padding: 28px; background: var(--surface); border-radius: var(--r-lg); display: grid; gap: 14px; }
+  h1 { margin: 0; font: 800 1.8rem "Bricolage Grotesque", sans-serif; }
+  .tabs { display: flex; gap: 4px; padding: 4px; background: var(--surface-2); border-radius: var(--r-md); }
+  .tabs button { flex: 1; padding: 9px; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--t-soft); font-weight: 700; cursor: pointer; }
+  .tabs button[aria-selected="true"] { background: var(--violet); color: #fff; }
+  label { font-weight: 700; font-size: .9rem; }
+  input { width: 100%; margin-top: 6px; padding: 12px 14px; font: inherit; color: var(--page-text); background: var(--surface-2); border: 2px solid transparent; border-radius: var(--r-md); }
+  input:focus { outline: none; border-color: var(--accent); }
+  .err { min-height: 1.3em; color: #F87171; font-weight: 700; font-size: .9rem; }
+  .back { text-align: center; font-size: .9rem; }
+</style>
+</head>
+<body>
+<main class="card">
+  <h1 id="title">Log in</h1>
+  <div class="tabs" role="tablist">
+    <button type="button" role="tab" id="t-login" aria-selected="true">Log in</button>
+    <button type="button" role="tab" id="t-signup" aria-selected="false">Sign up</button>
+  </div>
+  <form id="form" novalidate style="display:grid;gap:14px">
+    <div><label for="email">Email</label><input id="email" type="email" autocomplete="email" required></div>
+    <div><label for="password">Password</label><input id="password" type="password" autocomplete="current-password" minlength="8" maxlength="72" required></div>
+    <div class="err" id="err" role="alert"></div>
+    <button class="btn btn-lg" id="go" type="submit">Log in</button>
+  </form>
+  <a class="back" href="index.html">← Back home</a>
+</main>
+<script src="api.js"></script>
+<script>
+  const $ = (id) => document.getElementById(id);
+  let mode = 'login';
+  // only ever go to another page of this site
+  const next = (() => { const n = new URLSearchParams(location.search).get('next') || ''; return /^[\w-]+\.html(\?[\w=&%.-]*)?$/.test(n) ? n : 'create.html'; })();
+  function setMode(m) {
+    mode = m;
+    $('t-login').setAttribute('aria-selected', m === 'login');
+    $('t-signup').setAttribute('aria-selected', m === 'signup');
+    $('title').textContent = $('go').textContent = m === 'login' ? 'Log in' : 'Sign up';
+    $('password').autocomplete = m === 'login' ? 'current-password' : 'new-password';
+    $('err').textContent = '';
+  }
+  $('t-login').onclick = () => setMode('login');
+  $('t-signup').onclick = () => setMode('signup');
+  $('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = $('email').value.trim(), password = $('password').value;
+    if (!email || !password) { $('err').textContent = 'Enter your email and password.'; return; }
+    $('go').disabled = true; $('err').textContent = '';
+    try {
+      await (mode === 'login' ? BBApi.login(email, password) : BBApi.signup(email, password));
+      location.href = next;
+    } catch (err) {
+      $('err').textContent = err.status === 409 ? 'That email is already registered. Try logging in.' : err.message;
+      $('go').disabled = false;
+    }
+  });
+</script>
+</body>
+</html>
