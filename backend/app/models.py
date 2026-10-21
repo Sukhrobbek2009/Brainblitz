@@ -2,6 +2,8 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
+    JSON,
+    Float,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -13,7 +15,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -152,3 +154,35 @@ class AnswerLog(Base):
     points_awarded: Mapped[int] = mapped_column(Integer, nullable=False)
     # the server's clock at the moment the message arrived; never a client-reported time
     answered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class GameResult(Base):
+    """One archived row per finished game, written when the host ends the room."""
+
+    __tablename__ = "game_results"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # the archive outlives the room and quiz it came from, so these go NULL, not away
+    room_id: Mapped[int | None] = mapped_column(
+        ForeignKey("game_rooms.id", ondelete="SET NULL"), unique=True
+    )
+    quiz_id: Mapped[int | None] = mapped_column(ForeignKey("quizzes.id", ondelete="SET NULL"))
+    host_id: Mapped[int] = mapped_column(
+        ForeignKey("hosts.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    quiz_title: Mapped[str | None] = mapped_column(Text)  # as it was when the game ended
+    pin: Mapped[str] = mapped_column(Text, nullable=False)
+    player_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    avg_score: Mapped[float | None] = mapped_column(Float)  # NULL when nobody played
+    # mean over players of (correct answers / questions asked); polls excluded
+    avg_accuracy: Mapped[float | None] = mapped_column(Float)
+    # the questions as they were when the game ended (text, type, answers, correct_index,
+    # time_limit_seconds, points_mode), so the archive survives later edits or deletion of the quiz
+    questions: Mapped[list | None] = mapped_column(JSON().with_variant(JSONB, "postgresql"))
+    # final standings: rank, nickname, avatar, score, correct, graded, accuracy
+    standings: Mapped[list] = mapped_column(JSON().with_variant(JSONB, "postgresql"), nullable=False)
+    # per-question numbers frozen at the end (text, correct answer, how many got it right), so the
+    # report survives the quiz being edited or deleted later. NULL for games archived before this existed.
+    question_stats: Mapped[list | None] = mapped_column(JSON().with_variant(JSONB, "postgresql"))
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ended_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

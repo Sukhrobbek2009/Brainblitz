@@ -288,6 +288,161 @@ async def handle_message(room_id: int, conn, message: object) -> None:
         joined = session.scalar(select(func.count(Player.id)).where(Player.room_id == room_id))
         board = leaderboard_event(session, room_id, question_index)
     await conn.ws.send_json({"type": "answer_received", "question_index": question_index})
-    await connections.broadcast(room_id, board)
+    # Only the host sees a board while the question is open (its answered counter). Sent to
+    # players, a score jump would show who just got it right, before the reveal.
+    await connections.broadcast(room_id, board, only_role="host")
     if answered >= joined:
         await reveal_question(room_id, question_index)
+
+
+# Badge rules. Nothing in the frontend defines these yet, so they live here as constants.
+SPEED_DEMON_MIN_CORRECT = 2  # fastest average time on correct answers, among those with this many
+SHARPSHOOTER_MIN_GRADED = 3  # every graded question right, in a quiz with at least this many
+ON_FIRE_STREAK = 3  # best streak of at least this many in a row (where the streak bonus starts)
+
+
+def player_stats(session, room: GameRoom) -> list[dict]:
+    """Per-player final numbers, ranked, from the players and their answers_log rows.
+
+    A question counts once it has been shown, including one the host ended mid-way.
+    Polls are left out. An answer is correct if it earned points (a correct answer
+    always earns at least half the maximum). An unanswered question is a miss, so
+    it also ends a streak.
+    """
+    asked = 0 if room.current_question_index is None else room.current_question_index + 1
+    graded_positions = sorted(
+        session.scalars(
+            select(Question.position).where(
+                Question.quiz_id == room.quiz_id,
+                Question.type != "poll",
+                Question.position < asked,
+            )
+        ).all()
+        if room.quiz_id is not None
+        else []
+    )
+    outcome = {  # (player, question) -> (points, elapsed ms)
+        (pid, qi): (pts, ms)
+        for pid, qi, pts, ms in session.execute(
+            select(
+                AnswerLog.player_id,
+                AnswerLog.question_index,
+                AnswerLog.points_awarded,
+                AnswerLog.server_elapsed_ms,
+            ).where(
+                AnswerLog.room_id == room.id, AnswerLog.question_index.in_(graded_positions)
+            )
+        )
+    }
+    players = sorted(
+        session.scalars(select(Player).where(Player.room_id == room.id)).all(),
+        key=lambda p: (-p.score, as_utc(p.joined_at), p.nickname),
+    )
+    graded = len(graded_positions)
+    stats = []
+    for rank, p in enumerate(players, start=1):
+        streak = best = right = 0
+        right_ms = []
+        for qi in graded_positions:
+            pts, ms = outcome.get((p.id, qi), (0, None))
+            if pts > 0:
+                streak += 1
+                best = max(best, streak)
+                right += 1
+                right_ms.append(ms)
+            else:
+                streak = 0
+        stats.append(
+            {
+                "rank": rank,
+                "nickname": p.nickname,
+                "avatar": p.avatar,
+                "score": p.score,
+                "correct": right,
+                "graded": graded,
+                "accuracy": round(right / graded, 4) if graded else None,
+                "best_streak": best,
+                "avg_correct_ms": round(sum(right_ms) / len(right_ms)) if right_ms else None,
+            }
+        )
+    return stats
+
+
+def award_badges(stats: list[dict]) -> dict[str, list[str]]:
+    """Who earned which badge. `stats` is already ranked, so ties go to the higher rank."""
+    fast = [
+        s for s in stats if s["correct"] >= SPEED_DEMON_MIN_CORRECT and s["avg_correct_ms"] is not None
+    ]
+    fastest = min(fast, key=lambda s: (s["avg_correct_ms"], s["rank"]), default=None)
+    return {
+        "speed_demon": [fastest["nickname"]] if fastest else [],
+        "sharpshooter": [
+            s["nickname"]
+            for s in stats
+            if s["graded"] >= SHARPSHOOTER_MIN_GRADED and s["correct"] == s["graded"]
+        ],
+        "on_fire": [s["nickname"] for s in stats if s["best_streak"] >= ON_FIRE_STREAK],
+    }
+
+
+def build_results(session, room: GameRoom) -> dict:
+    """The numbers archived in game_results and sent with game_ended."""
+    standings = [
+        {k: v for k, v in s.items() if k != "avg_correct_ms"} for s in player_stats(session, room)
+    ]
+    n = len(standings)
+    accuracies = [r["accuracy"] for r in standings if r["accuracy"] is not None]
+    return {
+        "player_count": n,
+        "avg_score": round(sum(r["score"] for r in standings) / n, 2) if n else None,
+        "avg_accuracy": round(sum(accuracies) / len(accuracies), 4) if accuracies else None,
+        "standings": standings,
+    }
+
+
+def question_report(session, room: GameRoom) -> list[dict]:
+    """Per-question numbers for the teacher's report, from the quiz and the answers_log.
+
+    Accuracy is the share of all players who answered correctly (someone who didn't
+    answer counts as wrong). For a poll there's no right answer, so its figure is
+    participation instead: the share who voted.
+    """
+    asked = 0 if room.current_question_index is None else room.current_question_index + 1
+    total = session.scalar(select(func.count(Player.id)).where(Player.room_id == room.id))
+    questions = (
+        session.scalars(
+            select(Question)
+            .where(Question.quiz_id == room.quiz_id, Question.position < asked)
+            .order_by(Question.position)
+        ).all()
+        if room.quiz_id is not None
+        else []
+    )
+    by_question: dict[int, list[tuple[int, int]]] = {}
+    for qi, pts, ms in session.execute(
+        select(AnswerLog.question_index, AnswerLog.points_awarded, AnswerLog.server_elapsed_ms).where(
+            AnswerLog.room_id == room.id
+        )
+    ):
+        by_question.setdefault(qi, []).append((pts, ms))
+    report = []
+    for q in questions:
+        rows = by_question.get(q.position, [])
+        poll = q.type == "poll"
+        correct = 0 if poll else sum(1 for pts, _ in rows if pts > 0)
+        share = len(rows) if poll else correct
+        report.append(
+            {
+                "n": q.position + 1,
+                "text": q.text,
+                "type": q.type,
+                "poll": poll,
+                "total": total,
+                "answered": len(rows),
+                "correct": correct,
+                "answer": None if poll else q.answers[q.correct_index],
+                "accuracy_pct": round(100 * share / total) if total else 0,
+                "avg_ms": round(sum(ms for _, ms in rows) / len(rows)) if rows else None,
+            }
+        )
+    return report

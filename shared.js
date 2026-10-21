@@ -119,6 +119,12 @@
     { e: '🐲', n: 'Ember', r: 'epic' },     { e: '🤖', n: 'Bolt', r: 'epic' },
     { e: '🦁', n: 'Kingsley', r: 'legendary' }, { e: '🐉', n: 'Nova', r: 'legendary' },
   ];
+  /* badges the server awards from the real answers (see /rooms/{pin}/results) */
+  BB.BADGES = {
+    speed_demon: { emoji: '⚡', name: 'Speed Demon' },
+    sharpshooter: { emoji: '🎯', name: 'Sharpshooter' },
+    on_fire: { emoji: '🔥', name: 'On Fire' },
+  };
   /* the lobby publishes its state so the join page can say "full" or "already started" */
   BB.lobbyStatus = (pin) => {
     try {

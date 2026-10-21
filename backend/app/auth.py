@@ -1,25 +1,37 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .db import get_session
 from .models import Host
-from .security import create_token, get_current_host, hash_password, verify_password
+from .security import DUMMY_HASH, create_token, get_current_host, hash_password, verify_password
 
 router = APIRouter()
 
 
+def _within_bcrypt_limit(v: str) -> str:
+    # bcrypt only uses the first 72 *bytes* (not characters), and refuses longer input
+    if len(v.encode()) > 72:
+        raise ValueError("Password is too long (at most 72 bytes; some characters take more than one).")
+    return v
+
+
 class Credentials(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     email: EmailStr
-    # bcrypt only uses the first 72 bytes; cap length so none is silently ignored
     password: str = Field(min_length=8, max_length=72)
+    _bytes = field_validator("password")(_within_bcrypt_limit)
 
 
 class LoginRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     email: EmailStr
     password: str = Field(max_length=72)
+    _bytes = field_validator("password")(_within_bcrypt_limit)
 
 
 @router.post("/signup", status_code=201)
@@ -40,7 +52,9 @@ def signup(body: Credentials, session: Session = Depends(get_session)):
 @router.post("/login")
 def login(body: LoginRequest, session: Session = Depends(get_session)):
     host = session.scalar(select(Host).where(Host.email == body.email.lower()))
-    if host is None or not verify_password(body.password, host.password_hash):
+    # always do one bcrypt check, so an unknown email costs the same time as a wrong password
+    ok = verify_password(body.password, host.password_hash if host else DUMMY_HASH)
+    if host is None or not ok:
         raise HTTPException(status_code=401, detail="Invalid email or password")
     return {"access_token": create_token(host.id), "token_type": "bearer"}
 

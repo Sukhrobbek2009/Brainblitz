@@ -41,14 +41,25 @@ class RoomConnections:
     def has_connection(self, room_id: int, player_id: str) -> bool:
         return any(c.player_id == player_id for c in self._rooms.get(room_id, ()))
 
-    async def broadcast(self, room_id: int, message: dict, *, exclude: Connection | None = None) -> None:
-        targets = [c for c in self._rooms.get(room_id, ()) if c is not exclude]
+    async def broadcast(
+        self, room_id: int, message: dict, *, exclude: Connection | None = None, only_role: str | None = None
+    ) -> None:
+        targets = [
+            c for c in self._rooms.get(room_id, ())
+            if c is not exclude and (only_role is None or c.role == only_role)
+        ]
         results = await asyncio.gather(
             *(c.ws.send_json(message) for c in targets), return_exceptions=True
         )
         for conn, result in zip(targets, results):
             if isinstance(result, Exception):  # socket already gone
                 self.remove(room_id, conn)
+
+    async def close_room(self, room_id: int, code: int = 1000, reason: str = "Game ended") -> None:
+        """Close every socket in a room (after the final message went out) and forget it."""
+        conns = list(self._rooms.pop(room_id, ()))
+        self._seen.pop(room_id, None)
+        await asyncio.gather(*(c.ws.close(code=code, reason=reason) for c in conns), return_exceptions=True)
 
     def broadcast_detached(self, room_id: int, message: dict) -> None:
         task = asyncio.get_running_loop().create_task(self.broadcast(room_id, message))

@@ -21,7 +21,15 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(password: str, password_hash: str) -> bool:
-    return bcrypt.checkpw(password.encode(), password_hash.encode())
+    try:
+        return bcrypt.checkpw(password.encode(), password_hash.encode())
+    except ValueError:  # e.g. longer than bcrypt's 72 bytes: it's simply not the password
+        return False
+
+
+# A real bcrypt hash of a throwaway password. Logging in as an unknown email checks against
+# this, so it takes as long as a known email and the response time doesn't reveal which exist.
+DUMMY_HASH = hash_password("not-a-real-password")
 
 
 def create_token(host_id: int) -> str:

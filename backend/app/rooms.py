@@ -4,15 +4,20 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .db import get_session, open_session
-from .models import GameRoom, Host, Player, Question, Quiz
+from .models import GameResult, GameRoom, Host, Player, Question, Quiz
 from .game import (
     deadline_for,
+    award_badges,
+    build_results,
+    player_stats,
+    question_report,
+    cancel_timer,
     handle_message,
     load_question,
     question_shown_event,
@@ -28,6 +33,8 @@ MAX_PIN_ATTEMPTS = 10
 
 
 class RoomIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")  # the host comes from the login, never the body
+
     quiz_id: int
 
 
@@ -68,9 +75,12 @@ AVATARS = {
     "Rexie", "Sparkle", "Ember", "Bolt", "Kingsley", "Nova",
 }
 NICKNAME_MAX = 14  # the join form's maxlength
+MAX_PLAYERS = 200  # the lobby's own upper limit; the PIN is the only key, so don't let a room grow forever
 
 
 class JoinIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     nickname: str
     avatar: str
 
@@ -103,6 +113,8 @@ def join_room(pin: str, body: JoinIn, session: Session = Depends(get_session)):
         raise HTTPException(
             status_code=409, detail="This game already started. Players can't jump in mid-game."
         )
+    if session.scalar(select(func.count(Player.id)).where(Player.room_id == room.id)) >= MAX_PLAYERS:
+        raise HTTPException(status_code=409, detail="This game is full.")
     taken = HTTPException(status_code=409, detail="That nickname is taken. Try another one.")
     if session.scalar(
         select(Player.id).where(
@@ -243,6 +255,119 @@ async def next_question(
     schedule_timer(room.id, next_index, deadline_for(room, question))
     return {"id": room.id, "pin": room.pin, "status": room.status,
             "current_question_index": room.current_question_index}
+
+
+@router.post("/rooms/{pin}/end")
+async def end_room(
+    pin: str,
+    host: Host = Depends(get_current_host),
+    session: Session = Depends(get_session),
+):
+    # prefer the live room for a PIN, since an ended room's PIN can be reused
+    room = session.scalar(
+        select(GameRoom)
+        .where(GameRoom.pin == pin)
+        .order_by((GameRoom.status == "ended"), GameRoom.id.desc())
+        .limit(1)
+    )
+    if room is None or room.host_id != host.id:
+        raise HTTPException(status_code=404, detail="Hmm, we can't find that game")
+
+    now = datetime.now(timezone.utc)
+    # The flip, the numbers and the archive row all commit together. The conditional
+    # update means two End clicks can't both archive, and the unique room_id backs it up.
+    flipped = session.execute(
+        update(GameRoom)
+        .where(GameRoom.id == room.id, GameRoom.status != "ended")
+        .values(status="ended", ended_at=now)
+    ).rowcount
+    if not flipped:
+        session.rollback()
+        raise HTTPException(status_code=409, detail="This game has already ended.")
+    session.refresh(room)
+    results = build_results(session, room)
+    quiz = session.get(Quiz, room.quiz_id) if room.quiz_id is not None else None
+    questions = [
+        {"position": q.position, "text": q.text, "type": q.type, "answers": list(q.answers),
+         "correct_index": q.correct_index, "time_limit_seconds": q.time_limit_seconds,
+         "points_mode": q.points_mode}
+        for q in session.scalars(
+            select(Question).where(Question.quiz_id == room.quiz_id).order_by(Question.position)
+        ).all()
+    ] if room.quiz_id is not None else None
+    result = GameResult(
+            room_id=room.id,
+            quiz_id=room.quiz_id,
+            host_id=room.host_id,
+            quiz_title=quiz.title if quiz else None,
+            questions=questions,
+            pin=room.pin,
+            player_count=results["player_count"],
+            avg_score=results["avg_score"],
+            avg_accuracy=results["avg_accuracy"],
+            standings=results["standings"],
+            started_at=room.created_at,
+            ended_at=now,
+            question_stats=question_report(session, room),
+    )
+    session.add(result)
+    session.commit()
+
+    cancel_timer(room.id)  # no reveal should fire for a finished game
+    summary = {"game_result_id": result.id, **results}  # the id the host's report is fetched by
+    await connections.broadcast(room.id, {"type": "game_ended", **summary})
+    await connections.close_room(room.id)  # nobody stays connected to a finished game
+    return {"id": room.id, "pin": room.pin, "status": "ended", **summary}
+
+
+BADGES = [  # id, display name, what earns it (rules live in game.py)
+    ("speed_demon", "Speed Demon"),
+    ("sharpshooter", "Sharpshooter"),
+    ("on_fire", "On Fire"),
+]
+
+
+@router.get("/rooms/{pin}/results")
+def room_results(pin: str, session: Session = Depends(get_session)):
+    """Final standings and badges for a finished game. Public like the other room reads:
+    the PIN is the key, and nicknames/avatars/scores are already shown to the whole room."""
+    room = session.scalar(
+        select(GameRoom)
+        .where(GameRoom.pin == pin, GameRoom.status == "ended")
+        .order_by(GameRoom.id.desc())
+        .limit(1)
+    )
+    if room is None:
+        if session.scalar(select(GameRoom.id).where(GameRoom.pin == pin).limit(1)) is None:
+            raise HTTPException(status_code=404, detail="Hmm, we can't find that game")
+        raise HTTPException(status_code=409, detail="This game isn't finished yet.")
+
+    stats = player_stats(session, room)
+    winners = award_badges(stats)
+    quiz = session.get(Quiz, room.quiz_id) if room.quiz_id is not None else None
+    players = [
+        {
+            "rank": s["rank"],
+            "nickname": s["nickname"],
+            "avatar": s["avatar"],
+            "score": s["score"],
+            "correct": s["correct"],
+            "graded": s["graded"],
+            "accuracy_pct": None if s["accuracy"] is None else round(s["accuracy"] * 100),
+            "best_streak": s["best_streak"],
+            "badges": [bid for bid, _ in BADGES if s["nickname"] in winners[bid]],
+        }
+        for s in stats
+    ]
+    return {
+        "pin": room.pin,
+        "status": room.status,
+        "quiz_title": quiz.title if quiz else None,
+        "player_count": len(players),
+        "graded_questions": stats[0]["graded"] if stats else 0,
+        "players": players,
+        "badges": [{"id": bid, "name": name, "winners": winners[bid]} for bid, name in BADGES],
+    }
 
 
 @router.websocket("/rooms/{pin}/ws")

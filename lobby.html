@@ -292,6 +292,9 @@
   .pod .crown ~ .av { margin-top: clamp(8px, 2vw, 14px); }
   .pod .nm { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 800 clamp(1rem, 2.4vw, 1.45rem) "Bricolage Grotesque", sans-serif; letter-spacing: -.02em; }
   .pod.p1 .nm { font-size: clamp(1.2rem, 3vw, 1.9rem); }
+  .pod .bdg { display: inline-flex; gap: 4px; font-size: clamp(1.1rem, 2.6vw, 1.5rem); line-height: 1; }
+  .fin-badges { margin: 4px 0 0; text-align: center; font-weight: 700; color: var(--t-soft); line-height: 1.7; }
+  .fin-badges span { display: inline-block; margin: 0 10px; white-space: nowrap; }
   .pod .sc { padding: 3px 12px; border-radius: 99px; background: var(--surface-2); font: 700 clamp(.85rem, 1.8vw, 1.05rem) "Plus Jakarta Sans", sans-serif; font-variant-numeric: tabular-nums; }
   .pod.p1 .sc { background: var(--lime); color: var(--lime-ink); }
   .block { width: 100%; display: grid; place-items: start center; padding-top: 12px; border-radius: 18px 18px 0 0; color: #1B1033; font: 800 clamp(2rem, 5vw, 3.2rem) "Bricolage Grotesque", sans-serif; box-shadow: inset 0 3px 0 rgba(255,255,255,.55); }
@@ -505,6 +508,7 @@
         <div class="floor" aria-hidden="true"></div>
       </div>
       <p class="lb-you reserve" id="fin-you"></p>
+      <p class="fin-badges reserve" id="fin-badges"></p>
     </div>
 
     <div class="panel-report" id="panel-report" role="tabpanel" aria-labelledby="tab-report" hidden></div>
@@ -528,12 +532,14 @@
   <span class="hc-label">Host</span>
   <button class="btn btn-ghost" id="pause" type="button">⏸ Pause</button>
   <button class="btn btn-ghost" id="skip" type="button">⏭ Skip</button>
+  <button class="btn btn-danger" id="end" type="button" aria-label="End game for everyone">⏹ End</button>
 </div>
 
 <div class="sr" id="live" aria-live="polite"></div>
 <div class="toast" id="toast" role="status"></div>
 
 <script src="shared.js"></script>
+<script src="api.js"></script>
 <script>
 (() => {
   const $ = (id) => document.getElementById(id);
@@ -566,6 +572,9 @@
   const pin = /^\d{6}$/.test(qpin || '') ? qpin : '1' + String(Math.floor(Math.random() * 1e5)).padStart(5, '0'); // else a made-up one starting with 1 so it works in the join flow
   const pinText = pin.slice(0, 3) + ' ' + pin.slice(3);
   $('pin').textContent = pinText;
+  /* a real room (arriving from Save & Host while logged in) is driven by the server; otherwise this page runs its local simulation */
+  const realRoom = /^\d{6}$/.test(qpin || '') && window.BBApi && BBApi.isLoggedIn();
+  let remoteEnded = false, hostWs = null, finalResults = null, resultsData = null, finalizing = false;
 
   /* ---------- quiz: saved from the editor, or the sample Space quiz ---------- */
   const SHAPES = [
@@ -664,7 +673,7 @@
   /* players who really join through index.html (same browser, other tab) with this lobby's PIN */
   const seenJoins = new Set();
   addEventListener('storage', (e) => {
-    if (e.key !== 'brainblitz-join' || !e.newValue || gameState !== 'lobby') return;
+    if (realRoom || e.key !== 'brainblitz-join' || !e.newValue || gameState !== 'lobby') return;
     let j; try { j = JSON.parse(e.newValue); } catch { return; }
     const known = BLITZERS.find((b) => b[0] === j.emoji);
     if (!j || j.pin !== pin || seenJoins.has(j.id) || !known || typeof j.name !== 'string' || players.length >= MAX_PLAYERS) return;
@@ -679,7 +688,7 @@
   let joinTimer;
   function scheduleJoin() {
     clearTimeout(joinTimer);
-    if (gameState !== 'lobby' || players.length >= MAX_PLAYERS) return;
+    if (realRoom || gameState !== 'lobby' || players.length >= MAX_PLAYERS) return;
     joinTimer = setTimeout(() => {
       if (gameState === 'lobby') addPlayer();
       scheduleJoin();
@@ -689,7 +698,7 @@
   /* ---------- start → countdown → playing ---------- */
   /* ---------- game flow: countdown → question → reveal → feedback → leaderboard ---------- */
   const me = { id: 'me', name: 'You', emoji: '😎', rarity: 'epic', score: 0, prevScore: 0, streak: 0 };
-  const everyone = () => [me, ...players];
+  const everyone = () => (realRoom ? players : [me, ...players]);
   const fmt = (n) => n.toLocaleString('en-US');
   const ord = (n) => n + (['th', 'st', 'nd', 'rd'][(n % 100 > 10 && n % 100 < 14) ? 0 : Math.min(n % 10, 4) % 4] || 'th');
   const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches; // checked live, so changing the setting mid-game works
@@ -719,13 +728,19 @@
     };
     tick();
   }
-  startBtn.addEventListener('click', () => {
+  startBtn.addEventListener('click', async () => {
     if (players.length < MIN_PLAYERS) return;
+    if (realRoom) { // the first question arrives on the socket
+      startBtn.disabled = true;
+      try { await BBApi.startRoom(pin); } catch (e) { toast(e.message); renderCounter(false); }
+      return;
+    }
     clearTimeout(joinTimer);
     beginGame();
   });
 
   function toLobby() {
+    if (realRoom) { location.href = 'create.html?mine=1'; return; } // the room is over: back to your quizzes
     clearTimeout(cdTimer); cancelAfter(); stopRound(); resetPause(); stopFinal();
     setState('lobby');
   }
@@ -814,7 +829,7 @@
     if (gameState !== 'question' || paused || round.over) return;
     const left = round.endAt - now;
     setRing(left);
-    if (left <= 0) { finish(); return; }
+    if (left <= 0) { if (realRoom) setRing(0); else finish(); return; } // real room: wait for the server's reveal
     round.raf = requestAnimationFrame(frame);
   }
 
@@ -870,23 +885,8 @@
     });
   }
 
-  function finish() {
-    if (!round || round.over || gameState !== 'question') return;
-    round.over = true; // the clock is done: no more frames, answers or bot callbacks
-    stopRound();
-    const poll = QUESTION.type === 'poll';
-    const timedOut = performance.now() >= round.endAt;
-    if (timedOut) setRing(0); else $('ring').classList.remove('urgent');
-    scoreRound();
-    const times = [...round.answers.values()].map((a) => a.ms);
-    history[qi] = {
-      n: qi + 1, text: QUESTION.text, poll, total: round.total, answered: round.answered,
-      answer: QUESTION.opts.filter((o) => o.c).map((o) => o.t).join(' / '),
-      correct: everyone().filter((p) => round.results.get(p).correct).length,
-      avgMs: times.length ? times.reduce((x, y) => x + y, 0) / times.length : null,
-    };
-    setState('reveal');
-
+  /* tiles show the right answer and the chart shows how many picked each one */
+  function paintAnswers(poll) {
     /* reveal the correct tile, fade the rest */
     [...$('tiles').children].forEach((t, i) => {
       const o = QUESTION.opts[i];
@@ -910,6 +910,26 @@
     }));
     chart.hidden = false;
     setTimeout(() => chart.querySelectorAll('.bar i').forEach((bar, i) => { bar.style.height = Math.max(6, round.counts[i] / max * 96) + 'px'; }), 60);
+  }
+
+  function finish() {
+    if (!round || round.over || gameState !== 'question') return;
+    round.over = true; // the clock is done: no more frames, answers or bot callbacks
+    stopRound();
+    const poll = QUESTION.type === 'poll';
+    const timedOut = performance.now() >= round.endAt;
+    if (timedOut) setRing(0); else $('ring').classList.remove('urgent');
+    scoreRound();
+    const times = [...round.answers.values()].map((a) => a.ms);
+    history[qi] = {
+      n: qi + 1, text: QUESTION.text, poll, total: round.total, answered: round.answered,
+      answer: QUESTION.opts.filter((o) => o.c).map((o) => o.t).join(' / '),
+      correct: everyone().filter((p) => round.results.get(p).correct).length,
+      avgMs: times.length ? times.reduce((x, y) => x + y, 0) / times.length : null,
+    };
+    setState('reveal');
+
+    paintAnswers(poll);
 
     const v = $('verdict');
     const correctIdx = QUESTION.opts.flatMap((o, i) => (o.c ? [i] : []));
@@ -927,6 +947,7 @@
   const KIND_LINES = ['Good try! The next one’s yours 💪', 'So close. Shake it off and go again!', 'No worries, every miss teaches us something 🧠'];
   function showFeedback() {
     if (gameState !== 'reveal') return;
+    if (realRoom) return showLeaderboard(); // the host isn't a player: no personal feedback
     const r = round.results.get(me), poll = QUESTION.type === 'poll';
     const answer = QUESTION.opts.filter((o) => o.c).map((o) => o.t).join(' / ');
     const panel = $('fb'), title = $('fb-title'), sub = $('fb-sub'), flame = $('fb-flame');
@@ -960,7 +981,7 @@
   /* ---------- leaderboard: rows glide to their new ranks ---------- */
   const ROW_H = 72, TOP_N = 5;
   function showLeaderboard() {
-    if (gameState !== 'feedback') return;
+    if (gameState !== (realRoom ? 'reveal' : 'feedback')) return;
     cancelAfter();
     const final = qi >= QUESTIONS.length - 1;
     const all = everyone();
@@ -989,7 +1010,8 @@
     });
     list.replaceChildren(...els);
 
-    $('lb-you').textContent = `You’re ${ord(nr.get(me) + 1)} with ${fmt(me.score)} points`;
+    $('lb-you').textContent = realRoom ? (next[0] ? `${next[0].name} leads with ${fmt(next[0].score)} points` : '')
+      : `You’re ${ord(nr.get(me) + 1)} with ${fmt(me.score)} points`;
     $('lb-next').textContent = final ? 'See final results →' : 'Next question →';
     setState('leaderboard');
     void list.offsetHeight; // lock in the starting positions before animating
@@ -1018,8 +1040,18 @@
     }));
   }
 
-  function nextStep() {
+  async function nextStep() {
     if (gameState !== 'leaderboard') return;
+    if (realRoom) { // the next question (or the end) arrives on the socket
+      const btn = $('lb-next'); btn.disabled = true;
+      try {
+        if (qi < QUESTIONS.length - 1) await BBApi.nextRoom(pin);
+        else await endRemote();
+      } catch (e) { toast(e.message); }
+      btn.disabled = false;
+      if (gameState === 'leaderboard' && remoteEnded) endNow(); // in case the socket missed game_ended
+      return;
+    }
     if (qi < QUESTIONS.length - 1) { qi++; startQuestion(); } else showFinal();
   }
   $('lb-next').addEventListener('click', nextStep);
@@ -1084,13 +1116,26 @@
   function stopFinal() { finTimers.forEach(clearTimeout); finTimers = []; stopConfetti(); }
 
   function showFinal() {
+    endRemote(); // a game that runs to the last question is archived too
     stopFinal();
-    const ranked = [...everyone()].sort((a, b) => b.score - a.score);
+    const serverRows = !realRoom ? null : resultsData ? resultsData.players : finalResults ? finalResults.standings : null;
+    if (serverRows) serverRows.forEach((r) => { // the server's ranking, from the real answers, is the truth
+      addLivePlayer(r.nickname, r.avatar);
+      const p = findPlayer(r.nickname);
+      p.score = r.score; p.correct = r.correct; p.graded = r.graded; p.badges = r.badges || [];
+    });
+    const ranked = serverRows ? serverRows.map((r) => findPlayer(r.nickname)) : [...everyone()].sort((a, b) => b.score - a.score);
+    const badgeLine = !(resultsData && realRoom) ? '' : resultsData.badges.filter((b) => b.winners.length)
+      .map((b) => `${BB.BADGES[b.id].emoji} ${BB.BADGES[b.id].name}: ${b.winners.join(', ')}`);
     const graded = QUESTIONS.filter((q) => q.type !== 'poll').length;
     const podium = $('podium'), cap = $('fin-cap'), nameOf = (p) => (p === me ? 'You' : p.name);
     $('fin-sub').textContent = `${quizInfo.title} · ${QUESTIONS.length} ${QUESTIONS.length === 1 ? 'question' : 'questions'} · ${ranked.length} players`;
-    $('fin-you').textContent = `You finished ${ord(ranked.indexOf(me) + 1)} with ${fmt(me.score)} points` + (graded ? ` · ${me.correct || 0} of ${graded} correct` : '');
-    ['fin-you', 'fin-actions', 'fin-tabs'].forEach((id) => $(id).classList.remove('in'));
+    $('fin-you').textContent = realRoom
+      ? (ranked.length ? `Average score ${fmt(Math.round(ranked.reduce((n, p) => n + p.score, 0) / ranked.length))}`
+        + (finalResults && finalResults.avg_accuracy != null ? ` · average accuracy ${Math.round(finalResults.avg_accuracy * 100)}%` : '') : 'No players joined this game')
+      : `You finished ${ord(ranked.indexOf(me) + 1)} with ${fmt(me.score)} points` + (graded ? ` · ${me.correct || 0} of ${graded} correct` : '');
+    ['fin-you', 'fin-badges', 'fin-actions', 'fin-tabs'].forEach((id) => $(id).classList.remove('in'));
+    $('fin-badges').replaceChildren(...(badgeLine || []).map((t) => { const s = document.createElement('span'); s.textContent = t; return s; }));
     selectTab('podium');
     $('spot').classList.remove('on');
     podium.classList.remove('instant');
@@ -1105,14 +1150,23 @@
       el.querySelector('.nm').textContent = nameOf(p);
       el.querySelector('.sc').textContent = fmt(p.score) + ' pts';
       el.querySelector('.block').textContent = i + 1;
+      if (p.badges && p.badges.length) {
+        const b = document.createElement('span');
+        b.className = 'bdg';
+        b.textContent = p.badges.map((id) => BB.BADGES[id].emoji).join(' ');
+        b.setAttribute('role', 'img');
+        b.setAttribute('aria-label', 'Badges: ' + p.badges.map((id) => BB.BADGES[id].name).join(', '));
+        el.querySelector('.who').append(b);
+      }
       return el;
     }));
 
+    if (!ranked.length) { setState('final'); skipFinal(); return; } // nobody played: nothing to rank
     const say = (text, drum) => { $('fin-cap-text').textContent = text; cap.classList.toggle('drumming', !!drum); };
     const finishUp = () => {
       $('fin-skip').hidden = true;
       say(`🏆 ${nameOf(ranked[0])} ${ranked[0] === me ? 'win' : 'wins'}!`, false);
-      $('fin-you').classList.add('in'); $('fin-actions').classList.add('in'); $('fin-tabs').classList.add('in');
+      $('fin-you').classList.add('in'); $('fin-badges').classList.add('in'); $('fin-actions').classList.add('in'); $('fin-tabs').classList.add('in');
       $('live').textContent = `Final results. ${nameOf(ranked[0])} won with ${fmt(ranked[0].score)} points. ${$('fin-you').textContent}`;
       $('fin-again').focus({ preventScroll: true });
     };
@@ -1157,7 +1211,7 @@
     const top = podium.querySelector('.p1 .nm');
     $('fin-cap').classList.remove('drumming');
     $('fin-cap-text').textContent = top ? `🏆 ${top.textContent} ${top.textContent === 'You' ? 'win' : 'wins'}!` : '';
-    $('fin-you').classList.add('in'); $('fin-actions').classList.add('in'); $('fin-tabs').classList.add('in');
+    $('fin-you').classList.add('in'); $('fin-badges').classList.add('in'); $('fin-actions').classList.add('in'); $('fin-tabs').classList.add('in');
     $('live').textContent = `Final results. ${$('fin-cap-text').textContent} ${$('fin-you').textContent}`;
     $('fin-again').focus({ preventScroll: true });
   }
@@ -1185,13 +1239,44 @@
       .sort((a, b) => a.correct / a.graded - b.correct / b.graded);
     return {
       all, done, graded, hardest, needHelp,
-      avgScore: Math.round(all.reduce((n, p) => n + p.score, 0) / all.length),
-      avgAcc: graded.length ? totalCorrect / (graded.length * all.length) : null,
+      avgScore: all.length ? Math.round(all.reduce((n, p) => n + p.score, 0) / all.length) : 0,
+      avgAcc: graded.length && all.length ? totalCorrect / (graded.length * all.length) : null,
     };
   }
 
+  /* a real room's report comes from the server (/results/{id}/report): hardest question first, from the real answers */
+  let serverReport = null, reportLoading = false;
+  function fromServer(r) {
+    const done = r.questions.map((q) => ({ ...q, avgMs: q.avg_ms }));
+    const blitzer = (avatar) => BB.BLITZERS.find((b) => b.n === avatar) || BB.BLITZERS[0];
+    return {
+      all: { length: r.player_count }, avgScore: Math.round(r.avg_score || 0),
+      avgAcc: r.avg_accuracy_pct == null ? null : r.avg_accuracy_pct / 100,
+      done, graded: done.filter((q) => !q.poll), hardest: r.hardest ? done.find((q) => q.n === r.hardest.n) : null,
+      needHelp: r.needs_help.map((p) => ({ name: p.nickname, emoji: blitzer(p.avatar).e, rarity: blitzer(p.avatar).r, correct: p.correct, graded: p.graded })),
+    };
+  }
+  async function loadReport(root) {
+    if (reportLoading) return;
+    reportLoading = true;
+    root.replaceChildren(mk('p', 'rp-empty', 'Loading the report…'));
+    try { serverReport = await BBApi.getReport(finalResults.game_result_id); }
+    catch (e) {
+      const retry = mk('button', 'btn btn-lime', 'Try again');
+      retry.type = 'button'; retry.addEventListener('click', () => loadReport(root));
+      root.replaceChildren(mk('p', 'rp-empty', e.message), retry);
+    }
+    reportLoading = false;
+    if (serverReport && !root.hidden) renderReport();
+  }
+
   function renderReport() {
-    const d = reportData(), root = $('panel-report');
+    const root = $('panel-report');
+    let d;
+    if (realRoom && finalResults && finalResults.game_result_id) {
+      if (!serverReport) { loadReport(root); return; }
+      d = fromServer(serverReport);
+    } else d = reportData();
     const head = mk('div', 'rp-head');
     head.append(mk('h2', '', 'Report'));
     const exp = mk('button', 'btn btn-lime', '⬇ Export CSV');
@@ -1297,7 +1382,12 @@
       h.poll ? '' : Math.round(h.correct / h.total * 100), h.avgMs == null ? '' : (h.avgMs / 1000).toFixed(1)]));
     return '﻿' + rows.map((r) => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
   }
-  function exportCsv() {
+  async function exportCsv() {
+    if (realRoom && finalResults && finalResults.game_result_id) { // a real game: the server's file, from the real answers
+      try { toast(`Downloaded ${await BBApi.downloadReportCsv(finalResults.game_result_id)}`); }
+      catch (e) { toast(e.message); }
+      return;
+    }
     const slug = quizInfo.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'quiz';
     const name = `brainblitz-results-${slug}-${new Date().toISOString().slice(0, 10)}.csv`;
     const url = URL.createObjectURL(new Blob([buildCsv()], { type: 'text/csv;charset=utf-8' }));
@@ -1356,6 +1446,145 @@
   pauseBtn.addEventListener('click', () => setPaused(!paused));
   $('veil-resume').addEventListener('click', () => setPaused(false));
   skipBtn.addEventListener('click', skip);
+
+  /* ---------- End game: archive the real room and send everyone to the results ---------- */
+  async function endRemote() {
+    if (!realRoom || remoteEnded) return;
+    remoteEnded = true;
+    try { finalResults = await BBApi.endRoom(pin); }
+    catch (e) { if (e.status !== 409) { remoteEnded = false; toast(e.message); } } // 409: already ended, which is fine
+  }
+  async function endNow() { // stop whatever is running and show the final results
+    if (gameState === 'final' || finalizing) return;
+    finalizing = true;
+    clearTimeout(cdTimer); cancelAfter(); stopRound(); resetPause();
+    if (realRoom) { try { resultsData = await BBApi.getResults(pin); } catch {} } // the server's ranking and badges
+    finalizing = false;
+    showFinal();
+  }
+  $('end').addEventListener('click', async () => {
+    if (!confirm('End the game for everyone now? Players will see the final results.')) return;
+    $('end').disabled = true;
+    await endRemote();
+    $('end').disabled = false;
+    if (!realRoom || remoteEnded) endNow();
+  });
+  /* ---------- real room: the server drives the game, this screen shows it ---------- */
+  function findPlayer(name) { return players.find((p) => p.name.toLowerCase() === String(name).toLowerCase()); }
+  function addLivePlayer(name, avatar) {
+    if (findPlayer(name)) return false;
+    const b = BB.BLITZERS.find((x) => x.n === avatar) || BB.BLITZERS[0];
+    return addPlayer({ name, blitzer: [b.e, b.r] });
+  }
+  async function loadPlayers() {
+    try { (await BBApi.getRoom(pin)).players.forEach((p) => addLivePlayer(p.nickname, p.avatar)); } catch {}
+  }
+  function syncBoard(m) { // scores come from the server's leaderboard, never computed here
+    m.players.forEach((e) => {
+      addLivePlayer(e.nickname, e.avatar);
+      const p = findPlayer(e.nickname);
+      p.score = e.score; p.prevScore = e.previous_score; p.streak = e.streak;
+    });
+  }
+  function liveQuestion(q, remaining) {
+    stopRound(); cancelAfter();
+    qi = q.question_index;
+    if (QUESTIONS.length !== q.total_questions) { // the server's quiz is the one being played
+      QUESTIONS.length = 0;
+      for (let i = 0; i < q.total_questions; i++) QUESTIONS.push({ q: '', type: 'quiz' });
+      $('chip-count').textContent = `· ${QUESTIONS.length} ${QUESTIONS.length === 1 ? 'question' : 'questions'}`;
+    }
+    QUESTIONS[qi] = { q: q.text, type: q.question_type };
+    QUESTION = { text: q.text, type: q.question_type, time: q.time_limit_seconds, mult: q.points_mode === 'double' ? 2 : 1,
+      opts: q.answers.map((a, i) => ({ i, t: a.text, c: false })) }; // which one is right isn't known until the reveal
+    round = { counts: QUESTION.opts.map(() => 0), answers: new Map(), results: new Map(), mine: null, answered: 0, total: players.length,
+      timers: [], raf: 0, start: 0, endAt: 0, lastSec: -1, ending: false, over: false, pausedTotal: 0, pausedAt: 0, leftAtPause: 0 };
+    $('q-label').textContent = `Question ${qi + 1} of ${QUESTIONS.length}`;
+    renderProg($('prog'), qi, qi);
+    $('q-text').textContent = QUESTION.text;
+    $('chart').hidden = true; $('after').hidden = true;
+    $('verdict').textContent = ''; $('verdict').className = 'verdict';
+    $('ring').classList.remove('urgent');
+    const tiles = $('tiles');
+    tiles.className = 'tiles';
+    tiles.dataset.n = QUESTION.opts.length;
+    tiles.replaceChildren(...QUESTION.opts.map((o, pos) => {
+      const sh = SHAPES[o.i];
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = `at ${sh.c}`; b.disabled = true; // players answer on their own devices
+      b.innerHTML = `<span class="shape" role="img" aria-label="${sh.n}">${sh.s}</span><span class="lbl"></span><span class="key" aria-hidden="true">${pos + 1}</span>`;
+      b.querySelector('.lbl').textContent = o.t;
+      return b;
+    }));
+    setState('question');
+    renderAnswered(false);
+    const left = remaining == null ? QUESTION.time : remaining;
+    round.start = performance.now() - (QUESTION.time - left) * 1000; // measured on this clock from when it reached us
+    round.endAt = round.start + QUESTION.time * 1000;
+    setRing(left * 1000);
+    round.raf = requestAnimationFrame(frame);
+  }
+  function liveReveal(r) {
+    if (['reveal', 'leaderboard', 'final'].includes(gameState)) return; // already showing it
+    if (!round || gameState !== 'question' || qi !== r.question_index) { // came back mid-reveal: build a bare screen to reveal onto
+      liveQuestion({ question_index: r.question_index, total_questions: Math.max(QUESTIONS.length, r.question_index + 1), text: 'Results',
+        question_type: r.correct_index === null ? 'poll' : 'quiz', time_limit_seconds: 1, points_mode: 'standard',
+        answers: r.counts.map((_, i) => ({ text: 'Option ' + (i + 1) })) }, 0);
+    }
+    round.over = true; stopRound(); setRing(0);
+    round.counts = r.counts; round.answered = r.total_answers;
+    const poll = r.correct_index === null;
+    QUESTION.opts.forEach((o, i) => { o.c = i === r.correct_index; });
+    const got = poll ? 0 : (r.counts[r.correct_index] || 0);
+    history[qi] = { n: qi + 1, text: QUESTION.text, poll, total: players.length, answered: r.total_answers,
+      answer: QUESTION.opts.filter((o) => o.c).map((o) => o.t).join(' / '), correct: got, avgMs: null };
+    setState('reveal');
+    paintAnswers(poll);
+    const v = $('verdict');
+    v.className = 'verdict ok';
+    v.textContent = poll ? 'Poll closed' : 'Time’s up!';
+    if (!poll) { const sm = document.createElement('small'); sm.textContent = `${got} of ${players.length} got it right`; v.append(sm); }
+    $('after').hidden = false;
+    $('cont').focus({ preventScroll: true });
+    after(4500, showLeaderboard);
+  }
+  function onLive(m) {
+    switch (m.type) {
+      case 'state':
+        if (m.status === 'lobby') loadPlayers();
+        else if (m.status === 'question' && m.question) liveQuestion(m.question, m.seconds_remaining);
+        else if (m.status === 'reveal' && m.reveal) liveReveal(m.reveal);
+        break;
+      case 'player_joined': if (addLivePlayer(m.nickname, m.avatar)) toast(`${m.nickname} joined`); break;
+      case 'player_reconnected': addLivePlayer(m.nickname, m.avatar); break;
+      case 'question_shown': liveQuestion(m, m.time_limit_seconds); break;
+      case 'leaderboard':
+        syncBoard(m);
+        if (gameState === 'question' && round) { round.answered = Math.min(players.length, round.answered + 1); renderAnswered(true); } // one per answer
+        break;
+      case 'reveal': liveReveal(m); break;
+      case 'game_ended': remoteEnded = true; finalResults = m; endNow(); break;
+    }
+  }
+  let hostTries = 0, hostTimer = 0;
+  function connectHost() {
+    clearTimeout(hostTimer);
+    const sock = hostWs = BBApi.hostSocket(pin);
+    sock.onopen = () => { hostTries = 0; };
+    sock.onmessage = (ev) => { let m; try { m = JSON.parse(ev.data); } catch { return; } onLive(m); };
+    sock.onclose = (ev) => {
+      if (remoteEnded) return;
+      if (ev.code === 4401) return toast('Your login expired. Log in again to keep hosting.');
+      if (ev.code === 4404) return toast('This game is no longer running.');
+      hostTimer = setTimeout(connectHost, Math.min(5000, 1000 * 2 ** hostTries++));
+    };
+  }
+  if (realRoom) {
+    ['pause', 'skip', 'back', 'fin-again'].forEach((id) => { $(id).hidden = true; }); // not available for a live room
+    $('fin-lobby').textContent = 'My quizzes →';
+    loadPlayers();
+    connectHost();
+  }
 
   $('back').addEventListener('click', toLobby);
   $('cont').addEventListener('click', showFeedback);

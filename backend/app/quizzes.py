@@ -3,7 +3,7 @@
 from typing import Literal, Self
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
@@ -16,12 +16,17 @@ router = APIRouter()
 # the editor's cover swatches, timer chips and points chips
 COVER_COLORS = {"#7C3AED", "#EC4899", "#F59E0B", "#84CC16", "#0EA5E9", "#EF4444"}
 TIME_LIMITS = {5, 10, 20, 30}
+# the editor's own maxlengths (create.html), so the server and the form agree
+TITLE_MAX, TEXT_MAX, ANSWER_MAX, QUESTIONS_MAX = 60, 120, 75, 100
 
 
 class QuestionIn(BaseModel):
-    text: str
+    # unknown fields (a host_id, a quiz_id, an id...) are an error, never silently ignored
+    model_config = ConfigDict(extra="forbid")
+
+    text: str = Field(max_length=TEXT_MAX)
     type: Literal["quiz", "tf", "poll"] = "quiz"
-    answers: list[str]
+    answers: list[str] = Field(max_length=4)
     correct_index: int | None = None
     time_limit_seconds: int
     # editor: Standard = 1, Double = 2; polls award no points
@@ -45,6 +50,8 @@ class QuestionIn(BaseModel):
     @model_validator(mode="after")
     def check_answers(self) -> Self:
         answers = [a.strip() for a in self.answers]
+        if any(len(a) > ANSWER_MAX for a in answers):
+            raise ValueError(f"Answers can be at most {ANSWER_MAX} characters.")
         if self.type == "tf":
             if len(answers) != 2:
                 raise ValueError("True/False questions need exactly 2 answers.")
@@ -68,10 +75,12 @@ class QuestionIn(BaseModel):
 
 
 class QuizIn(BaseModel):
-    title: str
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = Field(max_length=TITLE_MAX)
     cover_color: str
     visibility: Literal["private", "public"]
-    questions: list[QuestionIn] = Field(min_length=1)
+    questions: list[QuestionIn] = Field(min_length=1, max_length=QUESTIONS_MAX)
 
     @field_validator("title")
     @classmethod
@@ -183,6 +192,14 @@ def replace_quiz(
     quiz = session.get(Quiz, quiz_id)
     if quiz is None or quiz.host_id != host.id:
         raise HTTPException(status_code=404, detail="Quiz not found")
+    if has_running_game(session, quiz.id):
+        # the questions are re-created on save: doing that under a running game would change
+        # them (and their ids) between one question and the next. A lobby is fine to edit
+        # around, since the questions are only read when the host presses Start.
+        raise HTTPException(
+            status_code=409,
+            detail="This quiz has a game in progress. End the game before editing it.",
+        )
     quiz.title = body.title
     quiz.cover_color = body.cover_color
     quiz.visibility = body.visibility
@@ -192,6 +209,18 @@ def replace_quiz(
         session.add(Question(quiz_id=quiz.id, position=position, **q.model_dump()))
     session.commit()
     return {"id": quiz.id, "title": quiz.title, "questions": len(body.questions)}
+
+
+def has_running_game(session: Session, quiz_id: int) -> bool:
+    """True if a game using this quiz has started and not ended."""
+    return (
+        session.scalar(
+            select(GameRoom.id)
+            .where(GameRoom.quiz_id == quiz_id, GameRoom.status.in_(("question", "reveal")))
+            .limit(1)
+        )
+        is not None
+    )
 
 
 def has_active_room(session: Session, quiz_id: int) -> bool:

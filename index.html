@@ -417,6 +417,22 @@
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition-duration: .01ms !important; }
   }
+.play { text-align: center; padding: 4px 0; }
+  .play-top { display: flex; justify-content: space-between; font-weight: 800; font-size: .85rem; color: var(--muted); }
+  .play h2 { font-size: 1.25rem; margin: 8px 0 12px; color: var(--ink); }
+  .play-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .play-grid button { min-height: 72px; padding: 10px; border: 0; border-radius: var(--r-md); color: #fff; font: 800 1rem "Plus Jakarta Sans", sans-serif; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; box-shadow: 0 4px 0 rgba(0,0,0,.25); transition: opacity .2s, transform .2s; }
+  .play-grid button .g { font-size: 1.6rem; line-height: 1; }
+  .play-grid button:disabled { cursor: default; }
+  .play-grid button.dim { opacity: .35; }
+  .play-grid button.right { outline: 4px solid #fff; box-shadow: 0 0 0 7px var(--ink); }
+  .play-msg { min-height: 1.5em; margin-top: 12px; font-weight: 800; color: var(--ink); }
+  .play-stats { margin-top: 4px; font-size: .95rem; color: var(--muted); font-weight: 700; }
+  .play-badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 10px; }
+  .play-badges span { padding: 5px 12px; border-radius: 99px; background: var(--lime); color: var(--lime-ink); font-weight: 800; font-size: .9rem; }
+  .play-board { margin-top: 6px; font-size: .9rem; color: var(--muted); }
+  .play-board ol { margin: 8px 0 0; padding: 0; list-style: none; }
+  .play #pl-done { margin-top: 12px; }
 </style>
 </head>
 <body>
@@ -507,6 +523,7 @@
               <h2>Choose your Blitzer</h2>
               <p>Pick a buddy. Rarer ones glow brighter.</p>
               <div class="blitzers" id="blitzers" role="group" aria-label="Blitzers"></div>
+              <div class="pin-error" id="avatar-error" role="alert"></div>
               <button class="btn btn-lg" type="submit" id="avatar-go" disabled>Let's go</button>
               <button class="link-btn" type="button" data-back>← Back</button>
             </form>
@@ -516,12 +533,23 @@
               <h2 tabindex="-1" data-focus>You're in!</h2>
               <p>See your name on the screen?</p>
               <span class="chip" id="me-name"></span>
-              <small>Game <span id="me-pin"></span> · waiting for the host to start…</small>
+              <small>Game <span id="me-pin"></span> · <span id="wait-count">waiting for the host to start…</span></small>
               <button class="link-btn" type="button" id="leave">Leave game</button>
             </div>
 
             <div class="pane" id="state-pane" inert>
               <div class="state on-light" id="state-box"></div>
+            </div>
+
+            <div class="pane play" id="play-pane" inert>
+              <div class="play-top"><span id="pl-q"></span><span id="pl-time"></span></div>
+              <h2 id="pl-text" tabindex="-1"></h2>
+              <div class="play-grid" id="pl-grid"></div>
+              <div class="play-msg" id="pl-msg" role="status" aria-live="polite"></div>
+              <div class="play-stats" id="pl-stats"></div>
+              <div class="play-badges" id="pl-badges"></div>
+              <div class="play-board" id="pl-board"></div>
+              <button class="btn btn-lg" type="button" id="pl-done" hidden>Back to start</button>
             </div>
 
           </div>
@@ -692,6 +720,7 @@
 </footer>
 
 <script src="shared.js"></script>
+<script src="api.js"></script>
 <script>
   /* ---------- Phone nav: burger menu ---------- */
   (() => {
@@ -765,7 +794,7 @@
       b.addEventListener('focus', () => b.select());
     });
 
-    document.getElementById('pin-form').addEventListener('submit', (e) => {
+    document.getElementById('pin-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const pin = pinValue();
       const fail = (msg, focusEl) => {
@@ -775,21 +804,15 @@
         focusEl.focus();
       };
       if (pin.length < 6) return fail('Enter all 6 digits.', boxes.find((b) => !b.value));
-      if (!pin.startsWith('1')) return fail("Hmm, we can't find that game", boxes[5]);
-      const blocked = lobbyBlock(pin);
-      if (blocked) { state.pin = pin; return showBlocked(...blocked); }
+      let room;
+      try { room = await BBApi.getRoom(pin); }
+      catch (err) { return fail(err.status === 404 ? "Hmm, we can't find that game" : err.message, boxes[5]); }
+      if (room.status === 'ended') return fail("Hmm, we can't find that game", boxes[5]);
       state.pin = pin;
+      if (room.status !== 'lobby') return showBlocked('started', {});
       go(1);
     });
 
-    /* "full" and "already started": the lobby with this PIN publishes its state (see lobby.html) */
-    function lobbyBlock(pin) {
-      const st = window.BB && BB.lobbyStatus(pin);
-      if (!st) return null;
-      if (st.state !== 'lobby') return ['started', st];
-      if (st.count >= st.max) return ['full', st];
-      return null;
-    }
     const stateBox = document.getElementById('state-box');
     function showBlocked(kind, st) {
       const full = kind === 'full';
@@ -843,52 +866,208 @@
       grid.append(el);
     });
 
-    document.getElementById('avatar-form').addEventListener('submit', (e) => {
+    const avatarErr = document.getElementById('avatar-error');
+    grid.addEventListener('click', () => { avatarErr.textContent = ''; });
+    document.getElementById('avatar-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!state.blitzer) return;
-      const blocked = lobbyBlock(state.pin); // the lobby may have filled up or started while you picked a Blitzer
-      if (blocked) return showBlocked(...blocked);
-      const me = document.getElementById('me');
-      me.textContent = state.blitzer.e;
-      me.style.setProperty('--glow', GLOW[state.blitzer.r]);
-      document.getElementById('me-name').textContent = state.nick;
-      document.getElementById('me-pin').textContent = state.pin.slice(0, 3) + ' ' + state.pin.slice(3);
-      /* tell a lobby open in another tab (same PIN) that this player has joined */
+      goBtn.disabled = true; avatarErr.textContent = '';
       try {
-        localStorage.setItem('brainblitz-join', JSON.stringify({ id: Date.now() + '-' + Math.random().toString(36).slice(2, 7),
-          pin: state.pin, name: state.nick, emoji: state.blitzer.e, rarity: state.blitzer.r }));
-      } catch {}
-      go(3);
-      joined = true; reconnecting = false; seenLobby = !!(window.BB && BB.lobbyStatus(state.pin));
+        const r = await BBApi.joinRoom(state.pin, state.nick, state.blitzer.n);
+        session = { pin: state.pin, player_id: r.player_id, nick: state.nick, emoji: state.blitzer.e, rarity: state.blitzer.r };
+        try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch {}
+        /* tell a lobby open in another tab (same PIN) that this player has joined */
+        try {
+          localStorage.setItem('brainblitz-join', JSON.stringify({ id: Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+            pin: state.pin, name: state.nick, emoji: state.blitzer.e, rarity: state.blitzer.r }));
+        } catch {}
+        enterWaiting();
+      } catch (err) {
+        goBtn.disabled = false;
+        if (err.status === 409 && /nickname/i.test(err.message)) { nickErr.textContent = err.message; shake(nick); go(1); }
+        else if (err.status === 409) showBlocked('started', {});
+        else if (err.status === 404) { pinErr.textContent = "Hmm, we can't find that game"; go(0); }
+        else avatarErr.textContent = err.message;
+      }
     });
 
-    /* reconnecting banner: shows if the browser goes offline, or a lobby we could see stops answering */
+    /* ---------- live game: one WebSocket per player ---------- */
+    const SESSION_KEY = 'brainblitz-player';
+    const GLYPH = { triangle: '▲', diamond: '◆', circle: '●', square: '■' };
+    const $ = (id) => document.getElementById(id);
+    const fmt = (n) => Number(n).toLocaleString();
+    const ord = (n) => n + (['th', 'st', 'nd', 'rd'][(n % 100 >> 3) ^ 1 && n % 10 < 4 ? n % 10 : 0]);
+    let session = null, ws = null, wsTries = 0, wsTimer = 0, leaving = false, finished = false;
+    let cur = null, clock = 0, lastBoard = null;
+
     const banner = document.getElementById('conn-banner');
-    let joined = false, reconnecting = false, seenLobby = false, bannerTimer = 0;
+    let joined = false, reconnecting = false, bannerTimer = 0;
     function setBanner(kind) {
       clearTimeout(bannerTimer);
       if (!kind) { banner.hidden = true; return; }
       banner.hidden = false;
       banner.className = 'banner on-light ' + (kind === 'back' ? 'banner-good' : 'banner-warn');
       banner.innerHTML = kind === 'back'
-        ? '<span aria-hidden="true">✓</span><span>Back online<small>You\u2019re still in the game.</small></span>'
+        ? '<span aria-hidden="true">✓</span><span>Back online<small>You’re still in the game.</small></span>'
         : '<span class="spinner" aria-hidden="true"></span><span>Reconnecting…<small>Hang tight. Your spot is saved.</small></span>';
       if (kind === 'back') bannerTimer = setTimeout(() => setBanner(null), 2600);
     }
-    function checkConnection() {
-      if (!joined || preview === 'reconnecting') return;
-      const st = window.BB && BB.lobbyStatus(state.pin);
-      if (st) seenLobby = true;
-      const lost = navigator.onLine === false || (seenLobby && !st);
-      if (lost && !reconnecting) { reconnecting = true; setBanner('reconnecting'); }
-      else if (!lost && reconnecting) { reconnecting = false; setBanner('back'); }
+    function lostConnection() { if (!reconnecting) { reconnecting = true; setBanner('reconnecting'); } }
+    function backOnline() { if (reconnecting) { reconnecting = false; setBanner('back'); } }
+    addEventListener('offline', () => { if (joined) lostConnection(); });
+    addEventListener('online', () => { if (joined && !finished && (!ws || ws.readyState > 1)) { clearTimeout(wsTimer); connectSocket(); } });
+
+    function enterWaiting() {
+      const me = $('me');
+      me.textContent = session.emoji;
+      me.style.setProperty('--glow', GLOW[session.rarity]);
+      $('me-name').textContent = session.nick;
+      $('me-pin').textContent = session.pin.slice(0, 3) + ' ' + session.pin.slice(3);
+      joined = true; finished = false; leaving = false;
+      go(3);
+      connectSocket();
+      refreshCount();
     }
-    setInterval(checkConnection, 2000);
-    addEventListener('online', checkConnection); addEventListener('offline', checkConnection);
+    async function refreshCount() {
+      try {
+        const r = await BBApi.getRoom(session.pin);
+        if (r.status === 'lobby') $('wait-count').textContent = `${r.player_count} ${r.player_count === 1 ? 'player is' : 'players are'} here · waiting for the host…`;
+      } catch {}
+    }
+
+    function connectSocket() {
+      clearTimeout(wsTimer);
+      const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+      const sock = new WebSocket(`${proto}://${location.host}/rooms/${session.pin}/ws?player_id=${encodeURIComponent(session.player_id)}`);
+      ws = sock;
+      sock.onopen = () => { wsTries = 0; backOnline(); };
+      sock.onmessage = (ev) => { let m; try { m = JSON.parse(ev.data); } catch { return; } onMessage(m); };
+      sock.onclose = (ev) => {
+        if (ws === sock) ws = null;
+        if (leaving || finished) return;
+        if (ev.code === 4404) return endedWhileAway();
+        if (ev.code === 4401) return gone('We couldn’t rejoin that game.');
+        lostConnection();
+        wsTimer = setTimeout(connectSocket, Math.min(5000, 1000 * 2 ** wsTries++));
+      };
+    }
+    function gone(msg) { resetToStart(); pinErr.textContent = msg; }
+    async function endedWhileAway() { // the game finished while this tab was away or refreshed
+      let r;
+      try { r = await BBApi.getResults(session.pin); } catch { return gone('That game has ended.'); }
+      finished = true; stopClock(); cur = null;
+      renderFinal(r.players, r.badges);
+    }
+
+    function onMessage(m) {
+      switch (m.type) {
+        case 'state':
+          if (m.status === 'lobby') { go(3); refreshCount(); }
+          else if (m.status === 'question' && m.question) showQuestion(m.question, m.seconds_remaining, m.already_answered);
+          else if (m.status === 'reveal' && m.reveal) showReveal(m.reveal);
+          break;
+        case 'player_joined': case 'player_reconnected': case 'player_reconnecting': if (!cur) refreshCount(); break;
+        case 'question_shown': showQuestion(m, m.time_limit_seconds, false); break;
+        case 'reveal': showReveal(m); break;
+        case 'leaderboard': lastBoard = m; if (cur && cur.revealed && cur.index === m.question_index) renderBoard(); break;
+        case 'game_ended': showFinal(m); break;
+      }
+    }
+
+    function stopClock() { clearInterval(clock); clock = 0; }
+    function showQuestion(q, secondsLeft, answered) {
+      stopClock();
+      cur = { index: q.question_index, locked: !!answered, chosen: null, revealed: false, poll: q.question_type === 'poll' };
+      $('pl-q').textContent = `Question ${q.question_index + 1} of ${q.total_questions}`;
+      $('pl-text').textContent = q.text;
+      $('pl-msg').textContent = answered ? 'Answer locked in. Waiting for everyone…' : '';
+      $('pl-board').textContent = ''; $('pl-stats').textContent = ''; $('pl-badges').replaceChildren();
+      $('pl-done').hidden = true;
+      $('pl-grid').replaceChildren(...q.answers.map((a, i) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.style.background = BB.ANSWER[a.color];
+        b.innerHTML = '<span class="g" aria-hidden="true"></span><span class="t"></span>';
+        b.querySelector('.g').textContent = GLYPH[a.shape];
+        b.querySelector('.t').textContent = a.text;
+        b.disabled = !!answered;
+        b.addEventListener('click', () => answer(i));
+        return b;
+      }));
+      const end = performance.now() + secondsLeft * 1000;
+      const tick = () => { const left = Math.max(0, Math.ceil((end - performance.now()) / 1000)); $('pl-time').textContent = left + 's'; if (!left) stopClock(); };
+      tick(); clock = setInterval(tick, 250);
+      go(5);
+      setTimeout(() => $('pl-text').focus({ preventScroll: true }), 450);
+    }
+    function answer(i) {
+      if (!cur || cur.locked || !ws || ws.readyState !== 1) return;
+      cur.locked = true; cur.chosen = i;
+      ws.send(JSON.stringify({ type: 'answer_submitted', index: i }));
+      [...$('pl-grid').children].forEach((b, k) => { b.disabled = true; b.classList.toggle('dim', k !== i); });
+      $('pl-msg').textContent = 'Answer locked in. Waiting for everyone…';
+    }
+    function showReveal(r) {
+      stopClock();
+      $('pl-time').textContent = '';
+      if (!cur || cur.index !== r.question_index) { // came back during the reveal: no question on screen
+        cur = { index: r.question_index, locked: true, chosen: null, revealed: true, poll: r.correct_index === null };
+        $('pl-q').textContent = `Question ${r.question_index + 1}`;
+        $('pl-text').textContent = 'Results are in';
+        $('pl-grid').replaceChildren();
+        $('pl-board').textContent = '';
+        $('pl-done').hidden = true;
+      }
+      cur.revealed = true;
+      [...$('pl-grid').children].forEach((b, k) => { b.disabled = true; b.classList.toggle('right', k === r.correct_index); b.classList.toggle('dim', r.correct_index !== null && k !== r.correct_index); });
+      $('pl-msg').textContent = cur.poll ? 'Thanks for voting! 🗳️'
+        : cur.chosen === null ? 'Time’s up! ⏰'
+        : cur.chosen === r.correct_index ? 'Correct! 🎉' : 'Not quite. Next one’s yours 💪';
+      go(5);
+      if (lastBoard && lastBoard.question_index === r.question_index) renderBoard();
+    }
+    const mine = (rows) => rows.find((p) => p.nickname.toLowerCase() === session.nick.toLowerCase());
+    function renderBoard() {
+      const me = mine(lastBoard.players);
+      if (!me) return;
+      const gain = me.score - me.previous_score;
+      $('pl-board').textContent = `You’re ${ord(me.rank)} with ${fmt(me.score)} points` + (gain > 0 ? ` (+${fmt(gain)})` : '') + (me.streak >= 3 ? ` · 🔥 ${me.streak} in a row` : '');
+    }
+    async function showFinal(g) {
+      finished = true; stopClock(); cur = null;
+      /* the event already has the standings; /results adds badges from the real answers */
+      let rows = g.standings.map((r) => ({ ...r, accuracy_pct: r.accuracy == null ? null : Math.round(r.accuracy * 100), badges: [] })), badges = [];
+      renderFinal(rows, badges);
+      try { const r = await BBApi.getResults(session.pin); renderFinal(r.players, r.badges); } catch {}
+    }
+    function renderFinal(rows, badgeList) {
+      const me = session && mine(rows);
+      $('pl-q').textContent = 'Game over'; $('pl-time').textContent = '';
+      $('pl-text').textContent = me ? `You finished ${ord(me.rank)}!` : 'The game has ended';
+      $('pl-grid').replaceChildren();
+      $('pl-msg').textContent = me ? `${fmt(me.score)} points` + (me.graded ? ` · ${me.correct} of ${me.graded} correct` : '') : '';
+      $('pl-stats').textContent = me ? [me.accuracy_pct != null ? `Accuracy ${me.accuracy_pct}%` : '', me.best_streak != null ? `Best streak ${me.best_streak}` : ''].filter(Boolean).join(' · ') : '';
+      $('pl-badges').replaceChildren(...((me && me.badges) || []).map((id) => {
+        const s = document.createElement('span'); s.textContent = `${BB.BADGES[id].emoji} ${BB.BADGES[id].name}`; return s;
+      }));
+      const ol = document.createElement('ol');
+      rows.slice(0, 3).forEach((p) => {
+        const li = document.createElement('li');
+        li.textContent = `${ord(p.rank)} ${p.nickname} · ${fmt(p.score)}` + ((p.badges || []).length ? ' ' + p.badges.map((id) => BB.BADGES[id].emoji).join('') : '');
+        ol.append(li);
+      });
+      $('pl-board').replaceChildren(ol);
+      $('pl-done').hidden = false;
+      go(5);
+    }
+    $('pl-done').addEventListener('click', () => resetToStart());
 
     /* Back + leave */
-    document.querySelectorAll('[data-back]').forEach((b) => b.addEventListener('click', () => go(step - 1)));
-    document.getElementById('leave').addEventListener('click', () => {
+    function resetToStart() {
+      leaving = true; clearTimeout(wsTimer); stopClock();
+      if (ws) { try { ws.close(); } catch {} ws = null; }
+      try { sessionStorage.removeItem(SESSION_KEY); } catch {}
+      session = null; cur = null; lastBoard = null;
       Object.assign(state, { pin: '', nick: '', blitzer: null });
       joined = false; reconnecting = false; setBanner(null);
       boxes.forEach((b) => setBox(b, ''));
@@ -896,10 +1075,20 @@
       grid.querySelectorAll('.blitzer').forEach((x) => x.setAttribute('aria-pressed', 'false'));
       goBtn.disabled = true;
       clearErr();
+      $('wait-count').textContent = 'waiting for the host to start…';
       go(0);
-    });
+    }
+    document.querySelectorAll('[data-back]').forEach((b) => b.addEventListener('click', () => go(step - 1)));
+    document.getElementById('leave').addEventListener('click', resetToStart);
 
     /* design previews: index.html?preview=full | started | reconnecting */
+    /* a refresh keeps the same player: rejoin with the saved player_id */
+    if (!preview) {
+      const linkPin = (new URLSearchParams(location.search).get('pin') || '').replace(/\D/g, '');
+      try { session = JSON.parse(sessionStorage.getItem(SESSION_KEY)); } catch { session = null; }
+      // a saved player resumes, unless the link is for a different game
+      if (session && session.player_id && session.pin && (!linkPin || linkPin === session.pin)) { state.pin = session.pin; state.nick = session.nick; enterWaiting(); } else session = null;
+    }
     if (preview === 'full') showBlocked('full', { count: 40, max: 40 });
     if (preview === 'started') showBlocked('started', { q: 3, total: 8 });
     if (preview === 'reconnecting') {
