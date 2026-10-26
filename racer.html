@@ -1,0 +1,980 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0E0720">
+<script src="theme.js"></script>
+<title>Blitz Racer – BrainBlitz</title>
+<meta name="description" content="Host screen for Blitz Racer: every player's car races to the FINISH banner while answers boost them down the track.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="brainblitz.css">
+<style>
+  /* The race screen is a dark zone in both themes (.dark-zone re-declares the dark text tokens, as on the lobby's host screens). */
+  body.racer {
+    --night: #0E0720; --night-2: #1A0B3B; --night-3: #1E0F45; /* the dark theme's surfaces, whatever the theme toggle says */
+    --font-ui: "Plus Jakarta Sans", system-ui, sans-serif; --font-display: "Bricolage Grotesque", var(--font-ui);
+    min-height: 100vh; display: flex; flex-direction: column; background: var(--night);
+  }
+  .b1 { width: 620px; height: 620px; background: var(--violet); top: -200px; left: -140px; }
+  .b2 { width: 520px; height: 520px; background: #9333EA; bottom: -220px; right: 8%; opacity: .55; animation-delay: -6s; }
+  .b3 { width: 360px; height: 360px; background: var(--lime); top: 24%; right: -120px; opacity: .3; animation-delay: -3s; }
+  .b4 { width: 240px; height: 240px; background: var(--lime); bottom: 10%; left: 24%; opacity: .16; animation-delay: -9s; }
+  .rc-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 24px; position: relative; z-index: 3; }
+    .rc-title { text-align: center; }
+  .rc-title h1 { margin: 0; font-size: clamp(1.3rem, 2.6vw, 2rem); letter-spacing: -.03em; }
+  .rc-title h1 b { color: var(--accent); }
+  .rc-title p { margin: 2px 0 0; color: var(--t-soft); font-size: .9rem; }
+  .rc-pin { font-family: var(--font-display); font-weight: 800; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-md); padding: 8px 14px; letter-spacing: .12em; }
+  .rc-pin small { display: block; font: 600 .7rem var(--font-ui); letter-spacing: .1em; color: var(--t-faint); text-transform: uppercase; }
+
+  /* ---------- live position strip: chips are absolutely placed by rank, so a re-sort slides them ---------- */
+  .strip { position: relative; z-index: 3; margin: 0 24px 16px; height: 44px; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
+  .strip ol { list-style: none; margin: 0; padding: 0; position: relative; height: 100%; }
+  .rank-chip { --w: 200px; position: absolute; left: 0; top: 0; width: calc(var(--w) - 8px); height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 8px;
+    border-radius: var(--r-md); background: var(--surface-2); border: 1px solid var(--border); font: 700 .86rem var(--font-ui);
+    transition: transform .7s var(--spring), background .3s, border-color .3s; }
+  .rank-chip .pos { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font: 800 .78rem var(--font-display); background: rgba(255,255,255,.14); }
+  .mini { flex: none; width: 38px; line-height: 0; }
+  .mini svg { width: 100%; height: auto; }
+  .rank-chip .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rank-chip.lead { background: color-mix(in srgb, var(--lime) 16%, transparent); border-color: var(--lime); }
+  .rank-chip.lead .pos { background: var(--lime); color: var(--lime-ink); }
+
+  /* ---------- the track: full width, gradient mesh behind a wide road ---------- */
+  .track {
+    --lanes: 5;
+    position: relative; flex: 1; min-height: 420px; width: 100%; overflow: hidden; isolation: isolate;
+    background:
+      radial-gradient(60% 55% at 12% 20%, color-mix(in srgb, var(--violet) 55%, transparent), transparent 70%),
+      radial-gradient(50% 50% at 88% 12%, color-mix(in srgb, var(--lime) 22%, transparent), transparent 70%),
+      radial-gradient(55% 60% at 70% 95%, color-mix(in srgb, var(--violet-edge) 70%, transparent), transparent 70%),
+      radial-gradient(40% 45% at 30% 85%, color-mix(in srgb, var(--rar-epic) 22%, transparent), transparent 70%),
+      linear-gradient(180deg, var(--night), var(--night-2) 55%, var(--night));
+  }
+  .track::before { /* faint speed streaks in the sky */
+    content: ""; position: absolute; inset: 0; z-index: -1; opacity: .5;
+    background: linear-gradient(90deg, transparent 98.6%, rgba(255,255,255,.07) 98.6%) 0 0 / 142px 100%;
+    --period: -142px; animation: roll calc(142s / var(--speed)) linear infinite;
+  }
+  /* The cars stay put and the road moves: every striped layer is a tile exactly one period wide,
+     slid left by one whole period per loop, so the loop has no seam. --speed is px per second. */
+  .track { --speed: 420; }
+  @keyframes roll { to { background-position-x: var(--period); } }
+  .road {
+    position: absolute; left: 0; right: 0; top: 64px; bottom: 64px; z-index: 0;
+    background: linear-gradient(180deg, var(--night), var(--night-3) 50%, var(--night));
+    box-shadow: inset 0 0 80px rgba(0,0,0,.55);
+  }
+  /* glowing rumble strips on both edges: alternating violet/lime blocks */
+  .rumble { position: absolute; left: 0; right: 0; height: 14px; z-index: 1;
+    background: linear-gradient(90deg, var(--violet) 50%, var(--lime) 50%) 0 0 / 56px 100%;
+    --period: -56px; animation: roll calc(56s / var(--speed)) linear infinite;
+    box-shadow: 0 0 18px 2px color-mix(in srgb, var(--violet) 90%, transparent), 0 0 34px 6px color-mix(in srgb, var(--lime) 35%, transparent); }
+  .rumble.top { top: 50px; }
+  .rumble.bottom { bottom: 50px; }
+  .lanes { position: absolute; left: 0; right: 0; top: 64px; bottom: 64px; z-index: 2; display: grid; grid-template-rows: repeat(var(--lanes), 1fr); }
+  .lane { position: relative; display: flex; align-items: center; min-height: 0; }
+  .lane + .lane::before { /* dashed lane divider */
+    content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; opacity: .55;
+    background: linear-gradient(90deg, rgba(255,255,255,.7) 50%, transparent 50%) 0 0 / 60px 100%;
+    --period: -60px; animation: roll calc(60s / var(--speed)) linear infinite;
+  }
+  .trails { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 4; pointer-events: none; } /* screen space, over the world */
+  .world { position: absolute; inset: 0; transform-origin: 0 0; will-change: transform; }
+  .racer-slot { will-change: transform; transition: transform .7s var(--spring); } /* the overshoot is the forward lurch */
+  /* correct answer: squash back (anticipation), stretch long as the car launches, squash on landing, settle */
+  .car { transform-origin: 50% 90%; }
+  .car.boost { animation: idle 2.4s ease-in-out infinite, boost .75s ease-out; animation-delay: var(--d, 0s), 0s; }
+  @keyframes boost {
+    0%   { scale: 1 1; }
+    16%  { scale: .86 1.14; translate: -9px 0; }
+    38%  { scale: 1.32 .78; translate: 14px 0; }
+    62%  { scale: .94 1.07; translate: 0 0; }
+    80%  { scale: 1.06 .95; }
+    100% { scale: 1 1; }
+  }
+  /* wrong answer: nose dips like braking, then rights itself. No x translation: the car never moves back. */
+  .car.brake { animation: idle 2.4s ease-in-out infinite, brake .7s ease-in-out; animation-delay: var(--d, 0s), 0s; }
+  @keyframes brake {
+    0%   { rotate: 0deg; translate: 0 0; scale: 1 1; }
+    30%  { rotate: 4deg; translate: 0 3px; scale: .97 1.04; }
+    55%  { rotate: 4deg; translate: 0 3px; scale: .97 1.04; }
+    80%  { rotate: -1deg; translate: 0 0; scale: 1 1; }
+    100% { rotate: 0deg; translate: 0 0; scale: 1 1; }
+  }
+  /* nitro flame sprite: sits behind the exhaust, flickers while the car launches */
+  .nitro { position: absolute; right: 113px; top: calc(50% - 5px); width: 74px; height: 30px; margin-top: -15px; opacity: 0; transform-origin: 100% 50%; pointer-events: none; }
+  .nitro.on { animation: flame .75s ease-out; }
+  @keyframes flame {
+    0%   { opacity: 0; transform: scaleX(calc(.2 * var(--k, 1))); }
+    15%  { opacity: 1; transform: scaleX(calc(1.1 * var(--k, 1))) scaleY(1.1); }
+    35%  { opacity: 1; transform: scaleX(calc(.85 * var(--k, 1))) scaleY(.9); }
+    55%  { opacity: 1; transform: scaleX(calc(1.2 * var(--k, 1))) scaleY(1); }
+    100% { opacity: 0; transform: scaleX(calc(.3 * var(--k, 1))) scaleY(.6); }
+  }
+  .car[role="button"] { cursor: pointer; }
+  .start-line { position: absolute; left: 150px; top: 64px; bottom: 64px; width: 14px; z-index: 2;
+    background: repeating-conic-gradient(#fff 0 25%, var(--night) 0 50%) 0 0 / 14px 14px; opacity: .9; }
+  .start-label { position: absolute; left: 150px; top: 18px; transform: translateX(-50%) translateX(7px); z-index: 3; font: 800 .7rem var(--font-display); letter-spacing: .14em; color: var(--t-soft); }
+
+  /* ---------- cars on the starting grid ---------- */
+  .racer-slot { position: absolute; left: 18px; width: 126px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+  .car { width: 112px; height: auto; max-height: calc(100% - 24px); filter: drop-shadow(0 0 10px color-mix(in srgb, var(--trail) 65%, transparent)); animation: idle 2.4s ease-in-out infinite; animation-delay: var(--d, 0s); }
+  @keyframes idle { 50% { transform: translateY(-2px) } }
+  .tag { max-width: 126px; padding: 1px 9px; border-radius: 99px; background: color-mix(in srgb, var(--night) 82%, transparent); border: 1px solid var(--border);
+    font: 700 .78rem var(--font-ui); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* ---------- finish banner, far right ---------- */
+  .finish { position: absolute; right: 0; top: 64px; bottom: 64px; width: 96px; z-index: 2; display: grid; place-items: center;
+    background: repeating-conic-gradient(#fff 0 25%, var(--night) 0 50%) 0 0 / 24px 24px; box-shadow: -10px 0 40px color-mix(in srgb, var(--lime) 45%, transparent); }
+  .finish span { writing-mode: vertical-rl; transform: rotate(180deg); font: 800 clamp(1.4rem, 3.4vh, 2.4rem) var(--font-display); letter-spacing: .3em;
+    color: var(--lime-ink); background: var(--lime); padding: 14px 8px; border-radius: var(--r-sm); box-shadow: 0 var(--lip) 0 var(--lime-edge); }
+  .finish-arch { position: absolute; right: 0; top: 0; width: 96px; height: 50px; z-index: 3; background: var(--violet); box-shadow: 0 4px 0 var(--violet-edge); border-radius: 0 0 var(--r-sm) var(--r-sm); }
+
+  /* milestone banner: a band across the whole track, plus a short camera shake of the track */
+  .milestone { position: absolute; left: 0; right: 0; top: 50%; z-index: 5; padding: 14px 24px; text-align: center; pointer-events: none; opacity: 0; transform: translateY(-50%);
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--violet) 92%, transparent) 18%, color-mix(in srgb, var(--violet) 92%, transparent) 82%, transparent); box-shadow: 0 0 40px color-mix(in srgb, var(--violet) 70%, transparent); }
+  .milestone b { display: block; font: 800 clamp(2rem, 6vw, 4.2rem) var(--font-display); letter-spacing: -.03em; color: var(--lime); text-shadow: 0 4px 0 var(--lime-edge); line-height: 1.05; }
+  .milestone small { display: block; margin-top: 2px; font: 700 1rem var(--font-ui); color: var(--page-text); }
+  .milestone.show { animation: banner 1.8s ease-in-out; }
+  @keyframes banner {
+    0%   { opacity: 0; transform: translateY(-50%) scaleY(.2); }
+    12%  { opacity: 1; transform: translateY(-50%) scaleY(1.08); }
+    20%  { transform: translateY(-50%) scaleY(1); }
+    80%  { opacity: 1; transform: translateY(-50%) scaleY(1); }
+    100% { opacity: 0; transform: translateY(-50%) scaleY(.2); }
+  }
+  .track.shake { animation: shake .45s linear; }
+  .track.shake-soft { animation: shake .3s linear; } /* same jolt, shorter, for an overtake */
+  .racer-slot.late .car { animation: idle 2.4s ease-in-out infinite, lateIn .8s var(--spring); animation-delay: var(--d, 0s), 0s; }
+  @keyframes lateIn { 0% { translate: -150px 0; opacity: 0; } 100% { translate: 0 0; opacity: 1; } }
+  .gapbadge.join { background: var(--violet); color: #fff; box-shadow: 0 3px 0 var(--violet-edge), 0 0 14px color-mix(in srgb, var(--violet) 60%, transparent); }
+  .fintag.dnf { background: var(--surface-2); color: var(--page-text); box-shadow: 0 3px 0 var(--border); backdrop-filter: blur(4px); }
+  .fintag.dnf small { color: var(--t-soft); }
+  .res-note { margin: 0 0 12px; text-align: center; color: var(--t-soft); font-weight: 600; font-size: .9rem; }
+  .gapbadge { position: absolute; left: 50%; top: calc(50% - 74px); transform: translateX(-50%); z-index: 4; white-space: nowrap; pointer-events: none; padding: 3px 10px; border-radius: 99px;
+    background: var(--lime); color: var(--lime-ink); box-shadow: 0 3px 0 var(--lime-edge), 0 0 14px color-mix(in srgb, var(--lime) 60%, transparent);
+    font: 800 .78rem var(--font-display); letter-spacing: .01em; animation: gapPop 1.4s var(--spring) forwards; }
+  @keyframes gapPop {
+    0%   { opacity: 0; transform: translate(-50%, 8px) scale(.4); }
+    18%  { opacity: 1; transform: translate(-50%, 0) scale(1.12); }
+    30%  { transform: translate(-50%, 0) scale(1); }
+    78%  { opacity: 1; transform: translate(-50%, -4px) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -12px) scale(.95); }
+  }
+  /* crowd energy: a light pulse sweeping the track, faster and brighter the more cars bunch up (driven from JS, see updatePulse) */
+  .pulse { position: absolute; inset: 0; z-index: 3; overflow: hidden; pointer-events: none; mix-blend-mode: screen; opacity: var(--glow, 0);
+    box-shadow: inset 0 0 90px 10px color-mix(in srgb, var(--lime) calc(var(--edge, 0) * 100%), transparent), inset 0 0 160px 30px color-mix(in srgb, var(--violet) calc(var(--edge, 0) * 100%), transparent); }
+  .pulse .beam { position: absolute; top: 0; bottom: 0; left: 0; width: 38%; opacity: var(--beam, 0); will-change: transform;
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--lime) 55%, transparent) 45%, rgba(255,255,255,.8) 50%, color-mix(in srgb, var(--violet) 50%, transparent) 56%, transparent); }
+  /* finish: the car hops twice, a checkered burst goes off, and a tag stays over it */
+  .car.hop { animation: idle 2.4s ease-in-out infinite, hop .8s ease-out; animation-delay: var(--d, 0s), 0s; }
+  @keyframes hop {
+    0%   { translate: 0 0; scale: 1 1; }
+    10%  { translate: 0 2px; scale: 1.08 .9; }
+    32%  { translate: 0 -26px; scale: .94 1.1; }
+    52%  { translate: 0 0; scale: 1.08 .92; }
+    68%  { translate: 0 -12px; scale: .98 1.04; }
+    84%  { translate: 0 0; scale: 1.03 .97; }
+    100% { translate: 0 0; scale: 1 1; }
+  }
+  .fintag { position: absolute; left: 50%; top: calc(50% - 82px); z-index: 4; transform: translateX(-50%); white-space: nowrap; pointer-events: none; text-align: center;
+    padding: 3px 12px 4px; border-radius: var(--r-sm); background: var(--card); color: var(--lime-ink); box-shadow: 0 3px 0 var(--field-edge), 0 0 16px color-mix(in srgb, var(--card) 50%, transparent);
+    font: 800 .8rem var(--font-display); letter-spacing: .06em; animation: finPop .5s var(--spring) both; }
+  .fintag small { display: block; font: 700 .7rem var(--font-ui); letter-spacing: .08em; color: var(--violet-edge); }
+  .fintag.p1 { background: var(--lime); box-shadow: 0 3px 0 var(--lime-edge), 0 0 18px color-mix(in srgb, var(--lime) 70%, transparent); }
+  @keyframes finPop { 0% { opacity: 0; transform: translateX(-50%) translateY(10px) scale(.4); } 100% { opacity: 1; transform: translateX(-50%) scale(1); } }
+  /* results list */
+  .results { position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; padding: 16px; background: color-mix(in srgb, var(--night) 78%, transparent); backdrop-filter: blur(3px); }
+  .results[hidden] { display: none; }
+  .res-card { width: min(560px, 100%); max-height: 100%; overflow: auto; padding: 24px; border-radius: var(--r-lg); background: var(--night-3); border: 1px solid var(--border);
+    box-shadow: var(--shadow-card); animation: resIn .5s var(--spring) both; }
+  @keyframes resIn { 0% { opacity: 0; transform: translateY(18px) scale(.94); } 100% { opacity: 1; transform: none; } }
+  .res-card h2 { margin: 0 0 10px; font-size: 1.6rem; letter-spacing: -.03em; text-align: center; }
+  .res-big { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 12px 16px; border-radius: var(--r-md); background: color-mix(in srgb, var(--lime) 14%, transparent); border: 1px solid var(--lime); font-weight: 700; }
+  .res-big svg { flex: none; width: 26px; height: 26px; }
+  .res-big small { display: block; color: var(--t-soft); font-weight: 600; font-size: .8rem; }
+  .res-list { list-style: none; margin: 0 0 16px; padding: 0; display: grid; gap: 6px; }
+  .res-row { display: grid; grid-template-columns: 34px 44px 1fr auto auto; align-items: center; gap: 12px; padding: 8px 12px; border-radius: var(--r-md); background: var(--surface); border: 1px solid var(--border); font-weight: 700; }
+  .res-row .rk { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); font: 800 .85rem var(--font-display); }
+  .res-row:first-child .rk { background: var(--lime); color: var(--lime-ink); }
+  .res-row .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .res-row .st { color: var(--t-soft); font-size: .78rem; font-weight: 600; white-space: nowrap; }
+  .res-row .bo { font: 800 .9rem var(--font-display); white-space: nowrap; color: var(--accent); }
+  .res-row .bo.top::after { content: " ★"; }
+  .res-nav { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-top: 16px; font-weight: 700; font-size: .9rem; }
+  .res-nav a { display: inline-flex; align-items: center; min-height: 44px; color: var(--t-soft); text-decoration: underline; text-underline-offset: 3px; }
+  .res-nav a:hover, .res-nav a:focus-visible { color: var(--accent); }
+  .res-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .streak { position: absolute; top: calc(50% - 8px); height: 10px; z-index: 3; border-radius: 99px; pointer-events: none; transform-origin: 100% 50%;
+    background: linear-gradient(90deg, transparent, var(--c) 70%, #fff); box-shadow: 0 0 18px 4px var(--c); animation: streak .55s ease-out forwards; }
+  @keyframes streak { 0% { opacity: 0; transform: scaleX(.1); } 25% { opacity: 1; transform: scaleX(1); } 100% { opacity: 0; transform: scaleX(1) translateX(30px); } }
+  @keyframes shake {
+    0%, 100% { translate: 0 0; } 12% { translate: -7px 3px; } 28% { translate: 6px -4px; } 44% { translate: -5px -2px; }
+    60% { translate: 4px 3px; } 76% { translate: -2px -1px; } 90% { translate: 1px 1px; }
+  }
+  .empty { position: absolute; inset: 64px 96px 64px 170px; z-index: 3; display: grid; place-items: center; text-align: center; color: var(--t-soft); font-weight: 600; }
+  /* Reduced motion: brainblitz.css switches every animation and transition off (!important), so what has to be visible is
+     visible in its resting state, and anything that waits for animationend also has a timer (see afterAnim in the script). */
+  /* The one animation kept: the position strip's reorder slide (a class selector outranks the system's * rule, both !important). */
+  @media (prefers-reduced-motion: reduce) { .milestone.show { opacity: 1; } .rank-chip { transition-duration: .7s !important; } }
+  @media (max-width: 640px) {
+    .rc-top { flex-wrap: wrap; justify-content: center; }
+    .start-line, .start-label { left: 110px; } .racer-slot { width: 100px; left: 6px; } .car { width: 84px; } .tag { max-width: 100px; } .finish, .finish-arch { width: 60px; }
+  }
+</style>
+</head>
+<body class="racer dark-zone">
+  <div class="bg" aria-hidden="true">
+    <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="blob b4"></div>
+    <div class="grain"></div>
+  </div>
+  <header class="rc-top">
+    <a class="logo" href="index.html" aria-label="BrainBlitz home">
+      <span class="logo-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="#A3E635"><path d="M13.5 2 5 13.5h6L9.5 22 19 9.5h-6.2z"/></svg></span><span>Brain<b>Blitz</b></span>
+    </a>
+    <div class="rc-title"><h1>Blitz <b>Racer</b></h1><p id="sub">Players on the starting grid</p></div>
+    <div class="rc-pin" id="pinBox" hidden><small>Game PIN</small><span id="pin"></span></div>
+  </header>
+
+  <nav class="strip" aria-label="Race positions"><ol id="strip"></ol></nav>
+
+  <div class="banner banner-warn" id="loginNote" role="status" hidden style="margin: 0 24px 16px">Log in as this game's host to follow the race live. <a href="login.html" style="text-decoration: underline; margin-left: .5ch">Log in</a></div>
+  <p class="sr" id="live" role="status" aria-live="polite"></p>
+
+  <main class="track" id="track" aria-label="Race track">
+    <div class="world" id="world"><!-- the camera moves and scales this; the banner and empty note stay on screen -->
+      <div class="road"></div>
+      <div class="rumble top"></div>
+      <div class="rumble bottom"></div>
+      <div class="start-label">START</div>
+      <div class="start-line"></div>
+      <div class="lanes" id="lanes"></div>
+      <div class="finish-arch"></div>
+      <div class="finish" role="img" aria-label="Finish line"><span>FINISH</span></div>
+    </div>
+    <div class="pulse" id="pulse" aria-hidden="true"><div class="beam"></div></div>
+    <canvas class="trails" id="trails" aria-hidden="true"></canvas>
+    <div class="milestone" id="banner" role="status" aria-live="polite"><b></b><small></small></div>
+    <div class="results" id="results" role="dialog" aria-modal="false" aria-labelledby="resTitle" hidden>
+      <div class="res-card">
+        <h2 id="resTitle">Race results</h2>
+        <p class="res-note" id="resNote" hidden>The quiz ran out of questions. Cars still racing are ranked by distance.</p>
+        <div class="res-big" id="resBig"></div>
+        <ol class="res-list" id="resList"></ol>
+        <div class="res-actions">
+          <button class="btn btn-lime" id="resPodium" type="button">🏆 See the podium</button>
+          <button class="btn btn-ghost" id="resAgain" type="button">↻ Play again</button>
+        </div>
+        <nav class="res-nav" aria-label="Leave the race">
+          <a href="index.html#modes">← Back to mode select</a><a href="create.html?mine=1">My quizzes</a>
+        </nav>
+      </div>
+    </div>
+    <div class="empty" id="empty" hidden>Waiting for players to join…</div>
+  </main>
+
+<script src="config.js"></script>
+<script src="api.js"></script>
+<script>
+(function () {
+  const NS = 'http://www.w3.org/2000/svg';
+  /* Five Turbo Lanes silhouettes, drawn facing right (toward FINISH). Same 120x56 box so any car fits any lane. */
+  /* remove/cleanup after an animation; the timer covers reduced motion, where animationend never fires */
+  const afterAnim = (el, ms, fn) => { let done = false; const run = () => { if (!done) { done = true; fn(); } }; el.addEventListener('animationend', (e) => { if (e.target === el) run(); }); setTimeout(run, ms + 120); };
+  const tok = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim(); // design-system colours, read once
+  /* Five silhouettes that differ in outline, not just colour: Viper = low wedge with a tail fin, Bolt = round hatchback with a bubble roof,
+     Tank = boxy body with a turret and a gun barrel, Drifter = low coupe with a tall rear wing, Comet = pointed rocket with speed lines. */
+  const CARS = {
+    Viper:   { color: tok('--lime'), body: '<path d="M4 42 L4 37 L22 32 L60 27 L98 28 L116 37 L116 42Z"/>', cabin: '<path d="M54 27 L70 20 L86 21 L94 28Z"/>', extra: '<path d="M4 37 L0 18 L26 32Z"/>' },
+    Bolt:    { color: tok('--ans-yellow'), body: '<path d="M10 42 L4 34 Q4 24 16 23 L84 23 Q108 26 116 36 L116 42Z"/>', cabin: '<path d="M22 23 Q30 3 58 3 Q86 4 94 23Z"/>' },
+    Tank:    { color: tok('--violet-soft'), body: '<path d="M4 42 L4 24 L12 20 L100 20 L112 26 L116 30 L116 42Z"/>', cabin: '<path d="M38 20 L44 8 L82 8 L88 20Z"/>', extra: '<path d="M84 11 H118 V16 H84Z"/>' },
+    Drifter: { color: tok('--danger-soft'), body: '<path d="M4 42 L4 36 L20 30 L52 25 L92 25 L112 33 L116 40 L116 42Z"/>', cabin: '<path d="M56 25 L68 15 L88 17 L96 25Z"/>', extra: '<path d="M0 8 H26 V13 H16 V30 H11 V13 H0Z"/>' },
+    Comet:   { color: tok('--rar-rare'), body: '<path d="M14 42 L34 33 L76 22 L116 38 L116 42Z"/>', cabin: '<path d="M60 25 L74 17 L88 26Z"/>', extra: '<path d="M0 28 H22 M0 34 H14 M2 22 H16" style="stroke:var(--rar-rare)" stroke-width="2.5" stroke-linecap="round" fill="none"/>' },
+  };
+  const ORDER = Object.keys(CARS);
+
+  let manual = false; // sample mode: the cars are the simulation's mark-correct / mark-wrong buttons
+  /* a small silhouette of the car, so the strip and results tell cars apart by shape, not by a coloured dot */
+  function carMini(name) {
+    const c = CARS[name], stroke = c.extra && c.extra.includes('stroke');
+    return `<svg viewBox="0 0 120 50" aria-hidden="true"><g fill="${c.color}">${c.body}${c.cabin}${c.extra && !stroke ? c.extra : ''}</g>${stroke ? c.extra : ''}</svg>`;
+  }
+
+  function carSvg(name, delay, nickname) {
+    const c = CARS[name];
+    const who = manual ? `tabindex="0" role="button" aria-label="${esc(nickname)}'s ${name}: Enter marks an answer correct, Shift+Enter marks it wrong"` : `role="img" aria-label="${esc(nickname)}: ${name} car"`;
+    return `<svg class="car" viewBox="0 0 120 56" ${who} style="--trail:${c.color};--d:${delay}s">
+      <g fill="${c.color}">${c.body}${c.extra && !c.extra.includes('stroke') ? c.extra : ''}</g>
+      ${c.extra && c.extra.includes('stroke') ? c.extra : ''}
+      <g style="fill:var(--night)" opacity=".85">${c.cabin}</g>
+      <rect x="100" y="33" width="14" height="3" rx="1.5" fill="#fff" opacity=".9"/>
+      <g style="fill:var(--night)"><circle cx="30" cy="44" r="9"/><circle cx="92" cy="44" r="9"/></g>
+      <g style="fill:var(--rar-common)"><circle cx="30" cy="44" r="4"/><circle cx="92" cy="44" r="4"/></g>
+    </svg>`;
+  }
+
+  function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+  /* progress: 0 (on the line) .. 1 (at FINISH), per player id. Nothing in the backend reports distance yet,
+     so this stays 0 for real rooms until it does; call BlitzRacer.setProgress(id, p) to move a car. */
+  const progress = new Map();
+  let players = [];
+  const TRAIL_MAX = 420;     // px: the trail's length at the finish
+  const ROAD_SPEED = 420;    // px/s, same as --speed in the CSS
+  const reducedQuery = matchMedia('(prefers-reduced-motion: reduce)');
+  let reduced = reducedQuery.matches; // live: flipping the setting mid-race takes effect straight away
+  reducedQuery.addEventListener('change', (e) => { reduced = e.matches; });
+
+  /* ---------- position strip: rank = progress, ties keep join order ---------- */
+  const CHIP_W = 200; // wide enough for the mini silhouette and a long nickname
+  const strip = document.getElementById('strip');
+  const ordinal = (n) => n + (['th', 'st', 'nd', 'rd'][(n % 100 >> 3) ^ 1 && n % 10 < 4 ? n % 10 : 0]);
+
+  function syncStrip() { // keep one chip per player (never rebuilt, so a re-sort can animate)
+    const have = new Map([...strip.children].map((li) => [li.dataset.id, li]));
+    players.forEach((p, i) => {
+      const id = String(p.id ?? p.nickname);
+      let li = have.get(id);
+      if (!li) {
+        li = document.createElement('li');
+        li.className = 'rank-chip';
+        li.dataset.id = id;
+        li.innerHTML = '<span class="pos"></span><span class="mini"></span><span class="nm"></span>';
+        li.style.transform = `translateX(${i * CHIP_W}px)`; // appear in place, then slide only on a re-sort
+        strip.append(li);
+      }
+      have.delete(id);
+      li.querySelector('.mini').innerHTML = carMini(ORDER[i % ORDER.length]);
+      li.querySelector('.nm').textContent = p.nickname;
+    });
+    have.forEach((li) => li.remove());
+    updateStrip();
+  }
+
+  function updateStrip() {
+    const ranked = players.map((p, i) => ({ id: String(p.id ?? p.nickname), nickname: p.nickname, i, d: progress.get(String(p.id ?? p.nickname)) || 0 }))
+      .sort((a, b) => b.d - a.d || a.i - b.i);
+    const byId = new Map([...strip.children].map((li) => [li.dataset.id, li]));
+    ranked.forEach((r, rank) => {
+      const li = byId.get(r.id);
+      if (!li) return;
+      li.style.transform = `translateX(${rank * CHIP_W}px)`;
+      li.style.zIndex = ranked.length - rank;
+      li.classList.toggle('lead', rank === 0 && r.d > 0);
+      li.querySelector('.pos').textContent = rank + 1;
+      li.setAttribute('aria-label', `${ordinal(rank + 1)}: ${r.nickname}`);
+    });
+    strip.style.width = ranked.length * CHIP_W + 'px';
+    const passers = detectOvertakes(ranked);
+    const top = ranked[0];
+    if (top && top.d > 0 && top.id !== announcedLeader) { announcedLeader = top.id; document.getElementById('live').textContent = `${top.nickname} takes the lead.`; }
+    detectClosing(ranked, passers);
+  }
+
+  /* ---------- "Closing the gap!": a car gained on the car directly ahead of it and is still behind it ---------- */
+  let announcedLeader = null; // for the screen-reader line when the lead changes
+  let prevProg = null; // id -> progress at the last update
+  const badgeAt = new Map(); // id -> when its badge last popped
+  function detectClosing(ranked, passers) {
+    const before = prevProg;
+    prevProg = new Map(ranked.map((r) => [r.id, r.d]));
+    if (!before || quiet) return;
+    for (let i = 1; i < ranked.length; i++) { // rank 0 has nobody ahead; every other rank can trigger, front or back
+      const me = ranked[i], ahead = ranked[i - 1];
+      if (passers.has(me.id) || !before.has(me.id) || !before.has(ahead.id)) continue; // an overtake has its own flash
+      const gapNow = ahead.d - me.d, gapBefore = before.get(ahead.id) - before.get(me.id);
+      if (me.d > before.get(me.id) + 1e-6 && gapNow > 1e-6 && gapNow < gapBefore - 1e-6) closingBadge(me.id);
+    }
+  }
+
+  function closingBadge(id) {
+    const now = performance.now();
+    if (now - (badgeAt.get(id) || -1e9) < 1400) return; // one at a time per car
+    badgeAt.set(id, now);
+    const slot = document.querySelector(`.racer-slot[data-id="${CSS.escape(id)}"]`);
+    if (!slot) return;
+    slot.querySelectorAll('.gapbadge').forEach((b) => b.remove());
+    const el = document.createElement('div');
+    el.className = 'gapbadge';
+    el.textContent = 'Closing the gap!';
+    afterAnim(el, 1400, () => el.remove());
+    slot.append(el);
+  }
+
+  /* ---------- overtakes: two cars swapping rank order, in either direction, flash + a small shake ---------- */
+  let prevRank = null; // id -> rank at the last update
+  function detectOvertakes(ranked) {
+    const now = new Map(ranked.map((r, rank) => [r.id, rank]));
+    const before = prevRank;
+    prevRank = now;
+    const passers = new Set();
+    if (!before || quiet) return passers;
+    for (const a of ranked) for (const b of ranked) {
+      // a was ahead of b, now b is ahead of a. A car still sitting on the line doesn't count as being passed.
+      if (before.has(a.id) && before.has(b.id) && before.get(a.id) < before.get(b.id) && now.get(b.id) < now.get(a.id) && a.d > 0) passers.add(b.id);
+    }
+    if (reduced) return passers; // no overtake flash, no shake; the strip still re-sorts
+    passers.forEach((id) => overtakeFlash(id));
+    if (passers.size) {
+      const track = document.getElementById('track');
+      track.classList.remove('shake-soft'); void track.offsetWidth; track.classList.add('shake-soft');
+      clearTimeout(track._ts); track._ts = setTimeout(() => track.classList.remove('shake-soft'), 420);
+    }
+    return passers;
+  }
+
+  function overtakeFlash(id) {
+    const i = players.findIndex((p) => String(p.id ?? p.nickname) === id);
+    const lane = document.getElementById('lanes').children[i];
+    if (!lane) return;
+    const colour = CARS[ORDER[i % ORDER.length]].color;
+    const front = 18 + 112 + (progress.get(id) || 0) * trackRun(); // the car's nose at its new spot
+    const el = document.createElement('div');
+    el.className = 'streak';
+    el.style.cssText = `--c:${colour}; left:${Math.max(0, front - 340)}px; width:340px`;
+    afterAnim(el, 550, () => el.remove());
+    lane.append(el);
+  }
+
+  const trackRun = () => Math.max(0, document.getElementById('track').clientWidth - 126 - 96 - 40 - 18);
+
+  function placeCars() {
+    const track = document.getElementById('track');
+    const run = trackRun(); // start slot -> just before the finish
+    document.querySelectorAll('.racer-slot').forEach((el) => {
+      el.style.transform = `translateX(${(progress.get(el.dataset.id) || 0) * run}px)`;
+    });
+  }
+
+  /* lane order (and so each player's car) is kept between renders; Play again shuffles it */
+  let shuffleFirst = new URLSearchParams(location.search).get('again') === '1';
+  let rawPlayers = [], laneOrder = [], quiet = false; // quiet: a reset is in progress, so no overtake / gap / milestone effects
+  const pid = (p) => String(p.id ?? p.nickname);
+  function shuffleLanes() {
+    const before = laneOrder.join();
+    for (let tries = 0; tries < 6 && laneOrder.length > 1; tries++) {
+      for (let i = laneOrder.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [laneOrder[i], laneOrder[j]] = [laneOrder[j], laneOrder[i]]; }
+      if (laneOrder.join() !== before) break; // make sure it really changed
+    }
+  }
+
+  const laneHtml = (p, i) => {
+    const car = ORDER[i % ORDER.length];
+    return `<div class="lane" data-id="${esc(pid(p))}"><div class="racer-slot" data-id="${esc(pid(p))}">${carSvg(car, (i * 0.3).toFixed(1), p.nickname)}<svg class="nitro" viewBox="0 0 74 30" aria-hidden="true"><path d="M74 15 C58 2 30 4 2 15 C30 26 58 28 74 15Z" style="fill:var(--danger-strong)"/><path d="M72 15 C58 7 38 8 14 15 C38 22 58 23 72 15Z" style="fill:var(--warn)"/><path d="M70 15 C60 11 48 11 36 15 C48 19 60 19 70 15Z" fill="#fff"/></svg><div class="tag" title="${esc(p.nickname)}" aria-hidden="true">${esc(p.nickname)}</div></div></div>`;
+  };
+  let knownIds = new Set(), renderedOnce = false, questionLine = false; // questionLine: the subtitle shows 'Question n of N' (runout scenario)
+  const raceStarted = () => finishOrder.length > 0 || [...progress.values()].some((v) => v > 0);
+
+  /* someone who joins after the race has started drops in at the starting line, never mid-track */
+  function welcomeLate(id) {
+    const slot = document.querySelector(`.racer-slot[data-id="${CSS.escape(id)}"]`);
+    if (!slot) return;
+    const p = players.find((q) => pid(q) === id);
+    slot.classList.add('late');
+    setTimeout(() => slot.classList.remove('late'), 1000);
+    const el = document.createElement('div');
+    el.className = 'gapbadge join';
+    el.textContent = 'Joins the race!';
+    afterAnim(el, 1400, () => el.remove());
+    slot.append(el);
+    document.getElementById('live').textContent = `${p ? p.nickname : 'A player'} joined at the starting line.`;
+  }
+
+  function render(next) {
+    rawPlayers = next;
+    laneOrder = laneOrder.filter((id) => next.some((p) => pid(p) === id));
+    next.forEach((p) => { if (!laneOrder.includes(pid(p))) laneOrder.push(pid(p)); });
+    if (shuffleFirst && laneOrder.length > 1) { shuffleFirst = false; shuffleLanes(); } // arrived through Play again on the podium page
+    players = laneOrder.map((id) => next.find((p) => pid(p) === id));
+    const lanes = document.getElementById('lanes');
+    document.getElementById('track').style.setProperty('--lanes', Math.max(players.length, 5));
+    const have = [...lanes.children].map((l) => l.dataset.id), want = players.map(pid);
+    const fresh = want.filter((id) => !knownIds.has(id));
+    if (have.length <= want.length && have.every((id, i) => id === want[i])) {
+      // same cars in the same lanes (a poll, or someone new at the end): leave the existing ones alone, so their tags, hops and badges survive
+      players.slice(have.length).forEach((p, k) => lanes.insertAdjacentHTML('beforeend', laneHtml(p, have.length + k)));
+    } else {
+      lanes.innerHTML = players.map(laneHtml).join(''); // first draw, a shuffle, or someone left
+    }
+    knownIds = new Set(want);
+    if (renderedOnce && raceStarted() && !raceOver) fresh.forEach(welcomeLate);
+    renderedOnce = true;
+    document.getElementById('empty').hidden = players.length > 0;
+    placeCars();
+    syncStrip();
+    if (!questionLine) document.getElementById('sub').textContent = players.length === 1 ? '1 player on the starting grid' : players.length + ' players on the starting grid';
+  }
+
+  /* ---------- soft particle trails: longer the further a car has travelled ---------- */
+  const canvas = document.getElementById('trails');
+  const ctx = canvas.getContext('2d');
+  const particles = [];
+  let last = performance.now();
+
+  function fitCanvas() {
+    const r = canvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  /* ---------- camera: pan and zoom so the leader sits near the middle ---------- */
+  const CAM_ZOOM = 1.45;
+  const cam = { s: 1, x: 0, y: 0 };
+  const world = document.getElementById('world');
+
+  const CAM_MARGIN = 140; // world px of breathing room around the pack, each side
+  function updateCamera(dt) {
+    const track = document.getElementById('track'), W = track.clientWidth, H = track.clientHeight;
+    let lead = null, tail = null;
+    for (const p of players) {
+      const k = String(p.id ?? p.nickname), v = progress.get(k) || 0;
+      if (!lead || v > lead.v) lead = { k, v };
+      if (!tail || v < tail.v) tail = { k, v };
+    }
+    let ts = 1, tx = 0, ty = 0;
+    if (lead && lead.v > 0 && !reduced) {
+      const slotOf = (k) => document.querySelector(`.racer-slot[data-id="${CSS.escape(k)}"]`);
+      const carX = (slot) => 18 + new DOMMatrix(getComputedStyle(slot).transform).m41 + 63; // the car's middle, in world px
+      const leadSlot = slotOf(lead.k), tailSlot = slotOf(tail.k);
+      if (leadSlot && tailSlot) {
+        const lx = carX(leadSlot), spread = Math.max(0, lx - carX(tailSlot));
+        // zoom in as far as CAM_ZOOM while the whole pack still fits across the screen; a stretched-out pack zooms out toward 1
+        ts = Math.min(CAM_ZOOM, Math.max(1, W / (spread + 2 * CAM_MARGIN)));
+        const cx = lx - spread * 0.5; // the pack's middle: with the zoom above, the leader and the last car both fit with a margin
+        const lane = leadSlot.parentElement;
+        const cy = lane.parentElement.offsetTop + lane.offsetTop + lane.offsetHeight / 2;
+        tx = Math.min(0, Math.max(W * (1 - ts), W / 2 - cx * ts)); // never show past the track's edges
+        ty = Math.min(0, Math.max(H * (1 - ts), H / 2 - cy * ts));
+      }
+    }
+    const k = 1 - Math.exp(-dt * 2.2); // gentle: eases toward the target rather than snapping
+    cam.s += (ts - cam.s) * k; cam.x += (tx - cam.x) * k; cam.y += (ty - cam.y) * k;
+    world.style.transform = `translate(${cam.x.toFixed(2)}px, ${cam.y.toFixed(2)}px) scale(${cam.s.toFixed(4)})`;
+  }
+
+  /* ---------- crowd energy: how bunched up the cars are, 0 (spread out) to 1 (everyone in one clump) ---------- */
+  const PACK_WINDOW = 0.09; // progress; ~one car length of track
+  let tension = 0, beamPhase = 0;
+  const pulse = document.getElementById('pulse'), beam = pulse.firstElementChild;
+
+  function packTarget() {
+    const moved = players.map((p) => progress.get(String(p.id ?? p.nickname)) || 0).filter((v) => v > 0); // cars still on the line aren't a pack
+    if (players.length < 2 || moved.length < 2) return 0;
+    let biggest = 1;
+    for (const a of moved) biggest = Math.max(biggest, moved.filter((b) => Math.abs(a - b) <= PACK_WINDOW).length);
+    return (biggest - 1) / (players.length - 1);
+  }
+
+  function updatePulse(dt) {
+    tension += (packTarget() - tension) * (1 - Math.exp(-dt * 1.5));
+    const t = tension < 0.02 ? 0 : tension;
+    const wave = 0.5 + 0.5 * Math.sin(beamPhase * 2 * Math.PI * 2.2); // the edge glow breathes with the sweep
+    pulse.style.setProperty('--glow', t ? 1 : 0);
+    if (reduced) { // no motion: just a steady glow that scales with the tension
+      pulse.style.setProperty('--edge', (t * 0.22).toFixed(3));
+      pulse.style.setProperty('--beam', 0);
+      return;
+    }
+    beamPhase = (beamPhase + dt * (0.12 + t * 0.6)) % 1; // one sweep every ~8s when loose, ~1.4s when everyone is bunched
+    beam.style.transform = `translateX(${((beamPhase * 1.38 - 0.38) * pulse.clientWidth).toFixed(1)}px)`; // from just off the left edge to just off the right
+    pulse.style.setProperty('--beam', (t * 0.85).toFixed(3));
+    pulse.style.setProperty('--edge', (t * (0.12 + 0.2 * wave)).toFixed(3));
+  }
+
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    updateCamera(dt);
+    updatePulse(dt);
+    const box = canvas.getBoundingClientRect();
+    ctx.clearRect(0, 0, box.width, box.height);
+    document.querySelectorAll('.racer-slot').forEach((slot) => {
+      const p = progress.get(slot.dataset.id) || 0;
+      const len = p * TRAIL_MAX;
+      if (len < 4 || reduced) return;
+      const car = slot.querySelector('.car'), r = car.getBoundingClientRect();
+      const colour = car.style.getPropertyValue('--trail');
+      // a few puffs per frame, born at the exhaust; they drift back at road speed and fade over len/ROAD_SPEED seconds
+      for (let i = 0; i < 2; i++) {
+        particles.push({ x: r.left - box.left + 6, y: r.top - box.top + r.height * (0.62 + Math.random() * 0.12),
+          vy: (Math.random() - 0.5) * 14, size: 2 + Math.random() * 4, age: 0, life: len / ROAD_SPEED, colour });
+      }
+    });
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const q = particles[i];
+      q.age += dt;
+      if (q.age >= q.life) { particles.splice(i, 1); continue; }
+      if (q.flag) { // checkered confetti: flies out, tumbles and falls; it doesn't ride the road
+        q.vy += 700 * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.rot += q.vr * dt;
+        const tt = q.age / q.life;
+        ctx.globalAlpha = 1 - tt * tt; ctx.fillStyle = q.colour;
+        ctx.save(); ctx.translate(q.x, q.y); ctx.rotate(q.rot); ctx.fillRect(-q.size / 2, -q.size / 2, q.size, q.size); ctx.restore();
+        continue;
+      }
+      q.x -= ROAD_SPEED * cam.s * dt; q.y += q.vy * dt; // screen px: the zoom makes the road look faster
+      const t = q.age / q.life; // 0 fresh .. 1 gone
+      ctx.globalAlpha = (q.smoke ? 0.4 : 0.5) * (1 - t) * (1 - t);
+      ctx.fillStyle = q.colour;
+      ctx.beginPath(); ctx.arc(q.x, q.y, q.size * (1 + t), 0, 7); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    requestAnimationFrame(frame);
+  }
+  /* ---------- milestones: the first car over halfway, and the first over three-quarters, each once per race ---------- */
+  const MILESTONES = [
+    { at: 0.5, title: 'Halfway there!', fired: false },
+    { at: 0.75, title: 'Final stretch!', fired: false },
+  ];
+
+
+  function showBanner(title, line) {
+    const track = document.getElementById('track'), banner = document.getElementById('banner');
+    banner.querySelector('b').textContent = title;
+    banner.querySelector('small').textContent = line;
+    for (const [el, cls, ms] of (reduced ? [[banner, 'show', 1800]] : [[banner, 'show', 1800], [track, 'shake', 450]])) { // no camera shake under reduced motion
+      el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls);
+      clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove(cls), ms + 120); // also what ends it under reduced motion
+    }
+  }
+
+  function checkMilestones(id, before, after) {
+    if ([...progress.values()].every((v) => v === 0)) MILESTONES.forEach((m) => (m.fired = false)); // a new race
+    const m = MILESTONES.filter((m) => !m.fired && before < m.at && after >= m.at).pop(); // a jump over both: show the later one
+    if (!m) return;
+    MILESTONES.forEach((x) => { if (x.at <= m.at) x.fired = true; });
+    const p = players.find((q) => String(q.id ?? q.nickname) === id);
+    setTimeout(() => showBanner(m.title, `${p ? p.nickname : 'Someone'} leads the way`), 350); // let the car's jump land first
+  }
+
+  /* A correct answer: a jump with squash-and-stretch and a nitro flame. `used` is the share of the question's time
+     the answer took (0 = instant, 1 = last second): the same curve as the points (backend/app/scoring.py,
+     scoreRound() in lobby.html). Points run 1000 -> 500, so the jump runs 3 -> 2 car lengths (a car is 112px). */
+  function markCorrect(id, used = Math.random()) {
+    if (raceOver) return;
+    used = Math.max(0, Math.min(1, used));
+    const speed = 1 - 0.5 * used; // the speed fraction of the points: 1 .. 0.5
+    id = String(id);
+    const slot = document.querySelector(`.racer-slot[data-id="${CSS.escape(id)}"]`);
+    if (!slot) return;
+    const run = Math.max(1, trackRun());
+    const lengths = (1 + 2 * speed) * jumpScale; // = (3 - used), stretched or shrunk to the quiz's length in a live room
+    const st = stats.get(id) || { boosts: 0, best: 0 };
+    st.boosts++; st.best = Math.max(st.best, lengths); st.lastUsed = used; stats.set(id, st); // lastUsed breaks a tie at the line
+    if (!biggest || lengths > biggest.lengths) biggest = { id, lengths }; // earliest wins a tie
+    BlitzRacer.setProgress(id, (progress.get(id) || 0) + (lengths * 112) / run);
+    slot.style.setProperty('--k', (0.6 + 0.8 * (speed - 0.5)).toFixed(2)); // flame size follows the speed too
+    for (const el of [slot.querySelector('.car'), slot.querySelector('.nitro')]) {
+      const cls = el.classList.contains('car') ? 'boost' : 'on';
+      el.classList.remove(cls); void el.getBoundingClientRect(); el.classList.add(cls);
+    }
+    puff(slot);
+  }
+
+  /* a grey puff at a car's exhaust that billows up and back; `heavy` is the thick, dark smoke of a wrong answer */
+  function puff(slot, heavy) {
+    if (reduced) return;
+    const box = canvas.getBoundingClientRect(), r = slot.querySelector('.car').getBoundingClientRect();
+    for (let i = 0; i < (heavy ? 18 : 9); i++) {
+      particles.push({ smoke: true, x: r.left - box.left + 8, y: r.top - box.top + r.height * 0.7, vy: -10 - Math.random() * (heavy ? 40 : 26),
+        size: (heavy ? 6 : 4) + Math.random() * (heavy ? 8 : 5), age: 0, life: (heavy ? 0.9 : 0.6) + Math.random() * 0.5, colour: heavy ? tok('--muted') : tok('--rar-common') });
+    }
+  }
+
+  /* ---------- finishing: handled in the order cars actually arrive ---------- */
+  const stats = new Map(); // id -> { boosts, best }: correct answers (each is a boost) and the longest jump, in car lengths
+  let biggest = null;      // { id, lengths }: the single biggest boost of the race
+  let jumpScale = 1; // jumpScale: 1 in the sample; a live room sets it from the quiz length
+  let resultsUp = false;
+  const finishOrder = []; // ids, in the order they reached progress 1 (= crossed the line)
+  const arrived = new Set(); // of those, the ones whose slide has landed at the banner
+  const celebrated = new Set();
+  let celebrating = false;
+
+  function flagBurst(slot) {
+    if (reduced) return;
+    const box = canvas.getBoundingClientRect(), r = slot.querySelector('.car').getBoundingClientRect();
+    for (let i = 0; i < 34; i++) {
+      const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.4, v = 220 + Math.random() * 380;
+      particles.push({ flag: true, x: r.left - box.left + r.width / 2, y: r.top - box.top + r.height * 0.3,
+        vx: Math.cos(a) * v, vy: Math.sin(a) * v, rot: Math.random() * 6, vr: (Math.random() - 0.5) * 14,
+        size: 7 + Math.random() * 7, age: 0, life: 1.1 + Math.random() * 0.6, colour: i % 2 ? '#fff' : tok('--night') });
+    }
+  }
+
+  function celebrate(id) {
+    const slot = document.querySelector(`.racer-slot[data-id="${CSS.escape(id)}"]`);
+    if (!slot) return;
+    const place = finishOrder.indexOf(id) + 1;
+    const car = slot.querySelector('.car');
+    const who = (players.find((p) => pid(p) === id) || {}).nickname || id;
+    document.getElementById('live').textContent = `${who} finished ${ordinal(place)}.`;
+    car.classList.remove('hop'); void car.getBoundingClientRect(); car.classList.add('hop');
+    flagBurst(slot);
+    slot.querySelectorAll('.fintag').forEach((t) => t.remove());
+    const tag = document.createElement('div');
+    tag.className = 'fintag' + (place === 1 ? ' p1' : '');
+    tag.innerHTML = `FINISHED!<small>${ordinal(place)} place</small>`;
+    slot.append(tag);
+  }
+
+  function pumpFinishers() { // one at a time, strictly in crossing order, a beat apart so two arrivals never blur together
+    if (celebrating) return;
+    const next = finishOrder.find((id) => !celebrated.has(id));
+    if (!next || !arrived.has(next)) return;
+    celebrating = true; celebrated.add(next); celebrate(next);
+    setTimeout(() => {
+      celebrating = false; pumpFinishers();
+      if (!celebrating && players.length && celebrated.size >= players.length) setTimeout(showResults, 1400); // everyone's done: let the last hop land
+    }, 280);
+  }
+
+  /* ---------- results: finishing order, boosts per player, the biggest boost ---------- */
+  /* Also callable when the quiz runs out of questions before everyone finishes: cars still racing are ranked by distance. */
+  /* cars that haven't finished, by how far they got; level on distance goes to the faster final answer, then join order */
+  function unfinishedRanked() {
+    const d = (p) => progress.get(pid(p)) || 0;
+    return players.filter((p) => !finishOrder.includes(pid(p)) && !crossing.includes(pid(p)))
+      .sort((a, b) => (Math.abs(d(a) - d(b)) > 1e-6 ? d(b) - d(a) : lastUsed(pid(a)) === lastUsed(pid(b)) ? 0 : lastUsed(pid(a)) < lastUsed(pid(b)) ? -1 : 1));
+  }
+
+  /* The quiz ran out of questions before every car finished: the race ends where it stands. */
+  let raceOver = false;
+  function endRace() {
+    if (raceOver || resultsUp || !players.length) return;
+    if (crossTimer) flushCrossing();
+    raceOver = true;
+    const rest = unfinishedRanked();
+    if (rest.length) showBanner('Out of questions!', 'Unfinished cars are ranked by distance');
+    rest.forEach((p, i) => {
+      const slot = document.querySelector(`.racer-slot[data-id="${CSS.escape(pid(p))}"]`);
+      if (!slot) return;
+      const tag = document.createElement('div');
+      tag.className = 'fintag dnf';
+      tag.innerHTML = `${ordinal(finishOrder.length + i + 1)}<small>${Math.round((progress.get(pid(p)) || 0) * 100)}% of the track</small>`;
+      slot.append(tag);
+    });
+    document.getElementById('live').textContent = rest.length ? 'The quiz is out of questions. Unfinished cars are ranked by distance.' : '';
+    setTimeout(showResults, rest.length ? 2800 : 0);
+  }
+
+  function showResults() {
+    if (resultsUp || !players.length) return;
+    resultsUp = true;
+    const idOf = (p) => String(p.id ?? p.nickname);
+    const rest = unfinishedRanked();
+    document.getElementById('resNote').hidden = !(raceOver && rest.length);
+    const rows = [...finishOrder.map((id) => players.find((p) => idOf(p) === id)).filter(Boolean), ...rest];
+    document.getElementById('resList').innerHTML = rows.map((p, i) => {
+      const id = idOf(p), st = stats.get(id) || { boosts: 0, best: 0 }, done = finishOrder.includes(id);
+      const idx = players.indexOf(p);
+      return `<li class="res-row"><span class="rk">${i + 1}</span><span class="mini">${carMini(ORDER[idx % ORDER.length])}</span>
+        <span class="nm">${esc(p.nickname)}</span><span class="st">${done ? 'Finished' : Math.round((progress.get(id) || 0) * 100) + '% of the track'}</span>
+        <span class="bo${biggest && biggest.id === id ? ' top' : ''}">${st.boosts} ${st.boosts === 1 ? 'boost' : 'boosts'}</span></li>`;
+    }).join('');
+    const big = document.getElementById('resBig');
+    const bp = biggest && players.find((p) => idOf(p) === biggest.id);
+    big.hidden = !bp;
+    if (bp) big.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" fill="#A3E635"/></svg>
+      <div>Biggest boost: ${esc(bp.nickname)}<small>${biggest.lengths.toFixed(1)} car lengths in one jump</small></div>`;
+    const box = document.getElementById('results');
+    box.hidden = false;
+    lastRows = rows;
+    document.getElementById('resPodium').focus({ preventScroll: true });
+    if (resultsAutoClose) setTimeout(resetRace, resultsAutoClose);
+  }
+
+  let lastRows = [];
+  /* Hand the finishing order to lobby.html's Podium screen (same 3rd -> 2nd -> 1st reveal and confetti), ranked by finish position. */
+  function showPodium() {
+    if (!lastRows.length) showResults();
+    const players = lastRows.map((p) => {
+      const st = stats.get(String(p.id ?? p.nickname)) || { boosts: 0 };
+      return { name: p.nickname, avatar: p.avatar || '', finished: finishOrder.includes(String(p.id ?? p.nickname)),
+        pill: `${st.boosts} ${st.boosts === 1 ? 'boost' : 'boosts'}` };
+    });
+    try { sessionStorage.setItem('brainblitz-race', JSON.stringify({ players, back: 'racer.html' + (location.search ? location.search + '&again=1' : '?again=1') })); } catch { return; }
+    location.href = 'lobby.html?race=1';
+  }
+  document.getElementById('resPodium').addEventListener('click', showPodium);
+
+  let resultsAutoClose = 0; // set by the simulation so the demo loops on its own
+  function hideResults() { resultsUp = false; document.getElementById('results').hidden = true; }
+
+  /* Play again: same players, fresh starting line, lanes and cars shuffled. */
+  function resetRace() {
+    quiet = true;
+    players.forEach((p) => BlitzRacer.setProgress(pid(p), 0));
+    stats.clear(); biggest = null; celebrated.clear(); arrived.clear(); finishOrder.length = 0; celebrating = false;
+    clearTimeout(crossTimer); crossTimer = 0; crossing.length = 0; raceOver = false; announcedLeader = null;
+    document.querySelectorAll('.fintag').forEach((t) => t.remove());
+    MILESTONES.forEach((m) => (m.fired = false)); particles.length = 0; badgeAt.clear();
+    shuffleLanes();
+    render(rawPlayers); // rebuilds the lanes in the new order, each car on the line
+    quiet = false;
+    hideResults();
+  }
+  document.getElementById('resAgain').addEventListener('click', resetRace);
+
+  /* Cars that cross within TIE_WINDOW of each other are level at the line. The one whose final correct answer was
+     fastest (the smallest share of the question's time) goes first; no data, or the same speed, keeps the order they arrived in. */
+  const TIE_WINDOW = 500; // ms
+  const crossing = []; let crossTimer = 0;
+  const lastUsed = (id) => { const v = stats.get(id)?.lastUsed; return v == null ? Infinity : v; };
+
+  function carReachedFinish(id) { // called when its progress first hits 1; the car itself is still sliding in
+    if (crossing.includes(id)) return;
+    crossing.push(id);
+    if (!crossTimer) crossTimer = setTimeout(flushCrossing, TIE_WINDOW);
+  }
+
+  function flushCrossing() {
+    clearTimeout(crossTimer); crossTimer = 0;
+    const group = crossing.splice(0), arrival = group.slice();
+    group.sort((a, b) => (lastUsed(a) === lastUsed(b) ? 0 : lastUsed(a) < lastUsed(b) ? -1 : 1)); // stable: ties keep arrival order
+    group.forEach((id) => {
+      finishOrder.push(id);
+      const slot = document.querySelector(`.racer-slot[data-id="${CSS.escape(id)}"]`);
+      let done = false;
+      const land = () => { if (done) return; done = true; arrived.add(id); pumpFinishers(); };
+      if (!slot || reduced) return setTimeout(land, 0);
+      slot.addEventListener('transitionend', (e) => { if (e.target === slot && e.propertyName === 'transform') land(); });
+      setTimeout(land, 1200); // fallback if the transition event never comes
+    });
+    if (group.length > 1) {
+      const nm = (id) => (players.find((p) => pid(p) === id) || {}).nickname || id;
+      const decided = lastUsed(group[0]) < lastUsed(group[1]);
+      showBanner('Photo finish!', decided ? `${nm(group[0])} takes it: faster final answer than ${nm(group[1])}` : `${group.map(nm).join(' and ')} crossed together`);
+    }
+  }
+
+  function resetFinisher(id) { // the car went back to the line: a new race
+    const slot = document.querySelector(`.racer-slot[data-id="${CSS.escape(id)}"]`);
+    if (slot) slot.querySelectorAll('.fintag').forEach((t) => t.remove());
+    const i = finishOrder.indexOf(id);
+    if (i >= 0) finishOrder.splice(i, 1);
+    arrived.delete(id); celebrated.delete(id);
+    const c = crossing.indexOf(id); if (c >= 0) crossing.splice(c, 1);
+  }
+
+  /* A wrong answer: grey smoke, a braking dip, and the car stays exactly where it is. */
+  function markWrong(id) {
+    if (raceOver) return;
+    const slot = document.querySelector(`.racer-slot[data-id="${CSS.escape(String(id))}"]`);
+    if (!slot) return;
+    const car = slot.querySelector('.car');
+    car.classList.remove('brake'); void car.getBoundingClientRect(); car.classList.add('brake');
+    puff(slot, true);
+  }
+  fitCanvas();
+  addEventListener('resize', () => { fitCanvas(); placeCars(); });
+  requestAnimationFrame(frame);
+
+  window.BlitzRacer = { carMini, carNames: ORDER, setPlayers: (list) => render(list), endRace, showPodium, showResults, resetRace, camera: cam, finishOrder, tension: () => tension, packTarget, markCorrect, markWrong, setProgress(id, p) {
+    id = String(id);
+    const before = progress.get(id) || 0, after = Math.max(0, Math.min(1, p));
+    progress.set(id, after); placeCars(); updateStrip(); if (!quiet) checkMilestones(id, before, after);
+    if (after >= 1 && before < 1 && !finishOrder.includes(id)) carReachedFinish(id);
+    else if (after === 0 && finishOrder.includes(id)) resetFinisher(id);
+    if ([...progress.values()].every((v) => v === 0)) { stats.clear(); biggest = null; hideResults(); } // back on the line: a new race
+  }, puff, getProgress: (id) => progress.get(String(id)) || 0 };
+
+  const params = new URLSearchParams(location.search);
+  const pin = (params.get('pin') || '').replace(/\D/g, '');
+  if (/^\d{6}$/.test(pin) && window.BBApi) {
+    document.getElementById('pin').textContent = pin;
+    document.getElementById('pinBox').hidden = false;
+    const poll = async () => {
+      try { render((await BBApi.getRoom(pin)).players); } catch {}
+    };
+    poll(); setInterval(poll, 2000);
+
+    /* ---------- live: the host's socket tells us who answered, right or wrong, and how fast ---------- */
+    const note = document.getElementById('loginNote');
+    const needLogin = () => {
+      note.querySelector('a').href = 'login.html?next=' + encodeURIComponent('racer.html?pin=' + pin);
+      note.hidden = false;
+    };
+    if (!BBApi.isLoggedIn()) needLogin();
+    else {
+      let tries = 0, ended = false;
+      const open = () => {
+        const sock = BBApi.hostSocket(pin);
+        sock.onopen = () => { tries = 0; note.hidden = true; };
+        sock.onmessage = (ev) => {
+          let m; try { m = JSON.parse(ev.data); } catch { return; }
+          if (m.type === 'question_shown') {
+            // tie the race to the quiz: a player who gets every question right at an average speed finishes about on the last one
+            jumpScale = Math.min(1.5, Math.max(0.3, trackRun() / (m.total_questions * 2.5 * 112)));
+            questionLine = true;
+            document.getElementById('sub').textContent = `Question ${m.question_index + 1} of ${m.total_questions}`;
+          } else if (m.type === 'answer_scored' && m.graded) {
+            (m.correct ? BlitzRacer.markCorrect(m.nickname, m.used) : BlitzRacer.markWrong(m.nickname));
+          } else if (m.type === 'player_joined') poll();
+          else if (m.type === 'game_ended') { ended = true; BlitzRacer.endRace(); }
+        };
+        sock.onclose = (e) => {
+          if (e.code === 4401) return needLogin(); // not the host's login
+          if (!ended && e.code !== 4404) setTimeout(open, Math.min(5000, 800 * ++tries)); // dropped: reconnect
+        };
+      };
+      open();
+    }
+  } else {
+    /* no room: show the five cars with sample nicknames (add ?n=3 for fewer or more) */
+    const sample = ['LunaTick', 'GalaxyGoat', 'TurboToast', 'RocketRaccoon', 'StarDust', 'SneakyOwl', 'JetPackJo', 'OrbitOtter'];
+    const n = Math.min(sample.length, Math.max(0, +params.get('n') || 5));
+    manual = true;
+    render(sample.slice(0, n).map((nickname) => ({ nickname })));
+    /* ---------- SIMULATION (temporary): remove when real answers drive setProgress. ?sim=0 turns it off ---------- */
+    /* click a car to mark that player's answer correct (shift-click: wrong) */
+    const mark = (e) => {
+      const slot = e.target.closest('.racer-slot');
+      if (slot) (e.shiftKey ? BlitzRacer.markWrong : BlitzRacer.markCorrect)(slot.dataset.id); // shift = wrong
+    };
+    document.getElementById('lanes').addEventListener('click', mark);
+    document.getElementById('lanes').addEventListener('keydown', (e) => {
+      if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('car')) { e.preventDefault(); mark(e); }
+    });
+    if (params.get('sim') !== '0') {
+      const scenario = params.get('scenario'); // tie | late | runout: the three edge states, each one scripted
+      const ids = () => players.map((p) => p.nickname);
+      const step = () => {
+        const racing = players.filter((p) => BlitzRacer.getProgress(p.nickname) < 1);
+        if (!racing.length) return setTimeout(step, 1000); // everyone's done: the results list is up; it restarts the race
+        const p = racing[Math.floor(Math.random() * racing.length)];
+        (Math.random() < 0.3 ? BlitzRacer.markWrong : BlitzRacer.markCorrect)(p.nickname); // ~30% wrong
+        setTimeout(step, 1000 + Math.random() * 1000);
+      };
+      if (scenario === 'tie') {
+        // two cars level at .78 both answer right in the same question; StarDust is much faster, so it wins the line even though LunaTick is processed first
+        setTimeout(() => { BlitzRacer.setProgress('LunaTick', 0.78); BlitzRacer.setProgress('StarDust', 0.78); BlitzRacer.setProgress('GalaxyGoat', 0.5); BlitzRacer.setProgress('TurboToast', 0.42); BlitzRacer.setProgress('RocketRaccoon', 0.3); }, 800);
+        setTimeout(() => { BlitzRacer.markCorrect('LunaTick', 0.7); BlitzRacer.markCorrect('StarDust', 0.1); }, 4500);
+        setTimeout(step, 14000);
+      } else if (scenario === 'late') {
+        setTimeout(step, 1200);
+        setTimeout(() => BlitzRacer.setPlayers([...rawPlayers, { nickname: 'SneakyOwl' }]), 7000); // joins mid-race: starts on the line
+      } else if (scenario === 'runout') {
+        const TOTAL = 6; let q = 0; questionLine = true;
+        const ask = () => {
+          q++; document.getElementById('sub').textContent = `Question ${q} of ${TOTAL}`;
+          ids().forEach((n, i) => setTimeout(() => {
+            if (BlitzRacer.getProgress(n) >= 1) return;
+            (Math.random() < 0.7 ? BlitzRacer.markCorrect : BlitzRacer.markWrong)(n);
+          }, 300 + i * 220));
+          if (q < TOTAL) setTimeout(ask, 3200); else setTimeout(() => BlitzRacer.endRace(), 3600);
+        };
+        setTimeout(ask, 1200);
+        setTimeout(step, 1200 + TOTAL * 3200 + 3600 + 2800 + 25000 + 1500); // after the results close, ordinary racing resumes
+      } else {
+        setTimeout(step, 1200);
+      }
+      resultsAutoClose = 25000; // the demo races again by itself 25s after the results appear
+    }
+  }
+})();
+</script>
+</body>
+</html>

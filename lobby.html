@@ -516,6 +516,8 @@
     <div class="row reserve" id="fin-actions">
       <button class="btn btn-lime btn-lg" id="fin-again" type="button">↻ Play again</button>
       <button class="btn btn-ghost btn-lg" id="fin-lobby" type="button">← Back to lobby</button>
+      <a class="btn btn-lime btn-lg" id="fin-race" href="racer.html" hidden>↻ Play again</a>
+      <a class="btn btn-ghost btn-lg" id="fin-modes" href="index.html#modes" hidden>🎮 Back to mode select</a>
       <a class="btn btn-ghost btn-lg" href="index.html">🏠 Home</a>
       <a class="btn btn-ghost btn-lg" href="create.html?mine=1">📚 New quiz</a>
     </div>
@@ -575,6 +577,7 @@
   $('pin').textContent = pinText;
   /* a real room (arriving from Save & Host while logged in) is driven by the server; otherwise this page runs its local simulation */
   const realRoom = /^\d{6}$/.test(qpin || '') && window.BBApi && BBApi.isLoggedIn();
+  let raceRanked = null; // the finishing order from Blitz Racer, when this page was opened for it
   let remoteEnded = false, hostWs = null, finalResults = null, resultsData = null, finalizing = false;
 
   /* ---------- quiz: saved from the editor, or the sample Space quiz ---------- */
@@ -1125,13 +1128,14 @@
       const p = findPlayer(r.nickname);
       p.score = r.score; p.correct = r.correct; p.graded = r.graded; p.badges = r.badges || [];
     });
-    const ranked = serverRows ? serverRows.map((r) => findPlayer(r.nickname)) : [...everyone()].sort((a, b) => b.score - a.score);
+    // a Blitz Racer game hands in its finishing order (see raceRanked); otherwise it's ranked by score as always
+    const ranked = raceRanked || (serverRows ? serverRows.map((r) => findPlayer(r.nickname)) : [...everyone()].sort((a, b) => b.score - a.score));
     const badgeLine = !(resultsData && realRoom) ? '' : resultsData.badges.filter((b) => b.winners.length)
       .map((b) => `${BB.BADGES[b.id].emoji} ${BB.BADGES[b.id].name}: ${b.winners.join(', ')}`);
     const graded = QUESTIONS.filter((q) => q.type !== 'poll').length;
     const podium = $('podium'), cap = $('fin-cap'), nameOf = (p) => (p === me ? 'You' : p.name);
-    $('fin-sub').textContent = `${quizInfo.title} · ${QUESTIONS.length} ${QUESTIONS.length === 1 ? 'question' : 'questions'} · ${ranked.length} players`;
-    $('fin-you').textContent = realRoom
+    $('fin-sub').textContent = raceRanked ? `Blitz Racer · ${ranked.length} players` : `${quizInfo.title} · ${QUESTIONS.length} ${QUESTIONS.length === 1 ? 'question' : 'questions'} · ${ranked.length} players`;
+    $('fin-you').textContent = raceRanked ? `${ranked.length} ${ranked.length === 1 ? 'racer' : 'racers'} · ${ranked.filter((p) => p.finished).length} crossed the line` : realRoom
       ? (ranked.length ? `Average score ${fmt(Math.round(ranked.reduce((n, p) => n + p.score, 0) / ranked.length))}`
         + (finalResults && finalResults.avg_accuracy != null ? ` · average accuracy ${Math.round(finalResults.avg_accuracy * 100)}%` : '') : 'No players joined this game')
       : `You finished ${ord(ranked.indexOf(me) + 1)} with ${fmt(me.score)} points` + (graded ? ` · ${me.correct || 0} of ${graded} correct` : '');
@@ -1149,7 +1153,7 @@
       el.innerHTML = `<div class="stack"><div class="who">${i === 0 ? '<span class="crown" aria-hidden="true">👑</span>' : ''}<span class="av" aria-hidden="true"></span><span class="nm"></span><span class="sc"></span></div><div class="block" aria-hidden="true"></div></div>`;
       el.querySelector('.av').textContent = p.emoji;
       el.querySelector('.nm').textContent = nameOf(p);
-      el.querySelector('.sc').textContent = fmt(p.score) + ' pts';
+      el.querySelector('.sc').textContent = p.pill || fmt(p.score) + ' pts';
       el.querySelector('.block').textContent = i + 1;
       if (p.badges && p.badges.length) {
         const b = document.createElement('span');
@@ -1168,7 +1172,7 @@
       $('fin-skip').hidden = true;
       say(`🏆 ${nameOf(ranked[0])} ${ranked[0] === me ? 'win' : 'wins'}!`, false);
       $('fin-you').classList.add('in'); $('fin-badges').classList.add('in'); $('fin-actions').classList.add('in'); $('fin-tabs').classList.add('in');
-      $('live').textContent = `Final results. ${nameOf(ranked[0])} won with ${fmt(ranked[0].score)} points. ${$('fin-you').textContent}`;
+      $('live').textContent = `Final results. ${nameOf(ranked[0])} won ${raceRanked ? 'the race' : 'with ' + fmt(ranked[0].score) + ' points'}. ${$('fin-you').textContent}`;
       $('fin-again').focus({ preventScroll: true });
     };
     const reveal = (rank) => {
@@ -1598,8 +1602,27 @@
     t.classList.add('show'); clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 1800);
   });
 
+  /* ---------- Blitz Racer hand-off: racer.html leaves its finishing order in sessionStorage and opens ?race=1 ---------- */
+  function readRace() {
+    if (params.get('race') !== '1') return null;
+    try {
+      const data = JSON.parse(sessionStorage.getItem('brainblitz-race') || 'null');
+      if (!data || !Array.isArray(data.players) || !data.players.length) return null;
+      if (/^racer\.html(\?[\w=&%.-]*)?$/.test(data.back || '')) $('fin-race').href = data.back; // the same room, or the sample game
+      return data.players.slice(0, MAX_PLAYERS).map((r, i) => {
+        const b = BB.BLITZERS.find((x) => x.n === r.avatar) || BB.BLITZERS[i % BB.BLITZERS.length];
+        return { id: 'r' + i, name: String(r.name || 'Racer').slice(0, 24), emoji: b.e, rarity: b.r, score: 0, badges: [],
+          pill: String(r.pill || ''), finished: !!r.finished };
+      });
+    } catch { return null; }
+  }
+  raceRanked = readRace();
+
   renderCounter(false);
-  setState('lobby');
+  if (raceRanked) { // straight to the podium, driven by finish position
+    $('fin-again').hidden = true; $('fin-lobby').hidden = true; $('fin-race').hidden = false; $('fin-modes').hidden = false; $('fin-tabs').hidden = true;
+    showFinal();
+  } else setState('lobby');
 })();
 </script>
 </body>

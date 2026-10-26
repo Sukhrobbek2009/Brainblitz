@@ -287,10 +287,20 @@ async def handle_message(room_id: int, conn, message: object) -> None:
         )
         joined = session.scalar(select(func.count(Player.id)).where(Player.room_id == room_id))
         board = leaderboard_event(session, room_id, question_index)
+        # for the host's Blitz Racer screen: who answered, right or wrong, and how fast (share of the time limit used)
+        scored = {
+            "type": "answer_scored",
+            "question_index": question_index,
+            "nickname": player.nickname,
+            "graded": question.type != "poll",
+            "correct": result.correct,
+            "used": min(1.0, elapsed_ms / (question.time_limit_seconds * 1000)),
+        }
     await conn.ws.send_json({"type": "answer_received", "question_index": question_index})
     # Only the host sees a board while the question is open (its answered counter). Sent to
     # players, a score jump would show who just got it right, before the reveal.
     await connections.broadcast(room_id, board, only_role="host")
+    await connections.broadcast(room_id, scored, only_role="host")  # never to players: it would reveal who got it right
     if answered >= joined:
         await reveal_question(room_id, question_index)
 
