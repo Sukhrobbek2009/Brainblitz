@@ -24,6 +24,7 @@ from .game import (
     schedule_timer,
     state_snapshot,
 )
+from .ratelimit import SlidingWindowLimiter
 from .realtime import Connection, connections
 from .security import get_current_host, host_for_token
 
@@ -75,6 +76,8 @@ AVATARS = {
     "Rexie", "Sparkle", "Ember", "Bolt", "Kingsley", "Nova",
 }
 NICKNAME_MAX = 14  # the join form's maxlength
+JOINS_PER_PIN_PER_MINUTE = 120  # a full class can join in a burst, one script can't flood the room
+join_limiter = SlidingWindowLimiter(JOINS_PER_PIN_PER_MINUTE, 60)
 MAX_PLAYERS = 200  # the lobby's own upper limit; the PIN is the only key, so don't let a room grow forever
 
 
@@ -104,6 +107,14 @@ class JoinIn(BaseModel):
 
 @router.post("/rooms/{pin}/join", status_code=201)
 def join_room(pin: str, body: JoinIn, session: Session = Depends(get_session)):
+    # keyed by PIN, not IP: a classroom shares one address. Every attempt counts, failed ones too.
+    retry_after = join_limiter.hit(pin)
+    if retry_after is not None:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many people are joining this game. Wait a moment and try again.",
+            headers={"Retry-After": str(int(retry_after) + 1)},
+        )
     room = session.scalar(
         select(GameRoom).where(GameRoom.pin == pin, GameRoom.status != "ended")
     )

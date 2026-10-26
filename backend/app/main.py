@@ -1,6 +1,8 @@
+import os
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from sqlalchemy import text
 
@@ -11,6 +13,12 @@ from .reports import router as reports_router
 from .rooms import router as rooms_router
 
 app = FastAPI(title="BrainBlitz API")
+# Only needed when the pages are on a different origin (a static host). WebSockets ignore CORS.
+_origins = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "").split(",") if o.strip()]
+if _origins:
+    app.add_middleware(
+        CORSMiddleware, allow_origins=_origins, allow_methods=["*"], allow_headers=["Authorization", "Content-Type"]
+    )
 app.include_router(auth_router)
 app.include_router(quizzes_router)
 app.include_router(rooms_router)

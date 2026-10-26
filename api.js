@@ -1,5 +1,7 @@
-/* BrainBlitz API client. Same origin as the pages, so no base URL or CORS. */
+/* BrainBlitz API client. Same origin as the pages unless config.js sets BB_API_BASE (static host + separate backend). */
 (function () {
+  const BASE = (window.BB_API_BASE || '').replace(/\/$/, '');
+  const wsUrl = (path) => (BASE ? BASE.replace(/^http/, 'ws') : (location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + location.host) + path;
   const KEY = 'brainblitz-token';
   let mem = null; // fallback when localStorage is blocked
   const token = () => { try { return localStorage.getItem(KEY) || mem; } catch { return mem; } };
@@ -9,7 +11,7 @@
     const headers = { 'Content-Type': 'application/json' };
     if (token()) headers.Authorization = 'Bearer ' + token();
     let res;
-    try { res = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) }); }
+    try { res = await fetch(BASE + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) }); }
     catch { throw Object.assign(new Error('Can\u2019t reach the server. Is it running?'), { status: 0 }); }
     const data = res.status === 204 ? null : await res.json().catch(() => null);
     if (!res.ok) {
@@ -33,14 +35,14 @@
     endRoom: (pin) => request('POST', '/rooms/' + encodeURIComponent(pin) + '/end'),
     /* WebSocket for the host of a room (browsers can't set headers, so the token rides in the query) */
     hostSocket(pin) {
-      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-      return new WebSocket(proto + '//' + location.host + '/rooms/' + encodeURIComponent(pin) + '/ws?token=' + encodeURIComponent(token() || ''));
+      return new WebSocket(wsUrl('/rooms/' + encodeURIComponent(pin) + '/ws?token=' + encodeURIComponent(token() || '')));
     },
+    playerSocket: (pin, playerId) => new WebSocket(wsUrl('/rooms/' + encodeURIComponent(pin) + '/ws?player_id=' + encodeURIComponent(playerId))),
     createRoom: (quizId) => request('POST', '/rooms', { quiz_id: quizId }),
     /* the report as a real file: fetched with the login (a plain link can't send it), then saved from a blob */
     async downloadReportCsv(gameResultId) {
       let res;
-      try { res = await fetch('/results/' + encodeURIComponent(gameResultId) + '/report.csv', { headers: { Authorization: 'Bearer ' + (token() || '') } }); }
+      try { res = await fetch(BASE + '/results/' + encodeURIComponent(gameResultId) + '/report.csv', { headers: { Authorization: 'Bearer ' + (token() || '') } }); }
       catch { throw Object.assign(new Error('Can\u2019t reach the server. Is it running?'), { status: 0 }); }
       if (!res.ok) {
         const data = await res.json().catch(() => null);

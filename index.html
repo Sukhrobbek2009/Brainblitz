@@ -720,6 +720,7 @@
 </footer>
 
 <script src="shared.js"></script>
+<script src="config.js"></script>
 <script src="api.js"></script>
 <script>
   /* ---------- Phone nav: burger menu ---------- */
@@ -937,8 +938,7 @@
 
     function connectSocket() {
       clearTimeout(wsTimer);
-      const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-      const sock = new WebSocket(`${proto}://${location.host}/rooms/${session.pin}/ws?player_id=${encodeURIComponent(session.player_id)}`);
+      const sock = BBApi.playerSocket(session.pin, session.player_id);
       ws = sock;
       sock.onopen = () => { wsTries = 0; backOnline(); };
       sock.onmessage = (ev) => { let m; try { m = JSON.parse(ev.data); } catch { return; } onMessage(m); };
