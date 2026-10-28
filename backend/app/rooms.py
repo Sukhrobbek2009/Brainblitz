@@ -1,6 +1,7 @@
 import json
 import secrets
 import uuid
+from typing import Literal
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
@@ -37,6 +38,8 @@ class RoomIn(BaseModel):
     model_config = ConfigDict(extra="forbid")  # the host comes from the login, never the body
 
     quiz_id: int
+    # optional; leaving it out is a classic room, exactly as before
+    mode: Literal["classic", "blitz_racer"] = "classic"
 
 
 def generate_pin() -> str:
@@ -59,14 +62,17 @@ def create_room(
             select(GameRoom.id).where(GameRoom.pin == pin, GameRoom.status != "ended")
         ):
             continue
-        room = GameRoom(quiz_id=quiz.id, host_id=host.id, pin=pin, status="lobby")
+        room = GameRoom(
+            quiz_id=quiz.id, host_id=host.id, pin=pin, status="lobby", mode=body.mode,
+            mode_state={"positions": {}} if body.mode == "blitz_racer" else {},
+        )
         session.add(room)
         try:
             session.commit()
         except IntegrityError:  # another room took this PIN since the check
             session.rollback()
             continue
-        return {"id": room.id, "pin": room.pin}
+        return {"id": room.id, "pin": room.pin, "mode": room.mode}
     raise HTTPException(status_code=503, detail="Couldn't allocate a game PIN, try again")
 
 
@@ -79,6 +85,17 @@ NICKNAME_MAX = 14  # the join form's maxlength
 JOINS_PER_PIN_PER_MINUTE = 120  # a full class can join in a burst, one script can't flood the room
 join_limiter = SlidingWindowLimiter(JOINS_PER_PIN_PER_MINUTE, 60)
 MAX_PLAYERS = 200  # the lobby's own upper limit; the PIN is the only key, so don't let a room grow forever
+
+
+# the Turbo Lanes cars (CARS in racer.html); keep in sync
+CARS = ("Viper", "Bolt", "Tank", "Drifter", "Comet")
+
+
+def pick_car(taken: list[str | None]) -> str:
+    """A random car nobody in the room has; once all five are used, a random one of the least-used."""
+    counts = {c: taken.count(c) for c in CARS}
+    fewest = min(counts.values())
+    return secrets.choice([c for c in CARS if counts[c] == fewest])
 
 
 class JoinIn(BaseModel):
@@ -134,13 +151,20 @@ def join_room(pin: str, body: JoinIn, session: Session = Depends(get_session)):
     ):
         raise taken
     player = Player(room_id=room.id, nickname=body.nickname, avatar=body.avatar)
+    if room.mode == "blitz_racer":
+        # lock the room row so two simultaneous joins can't both be handed the same free car
+        session.refresh(room, with_for_update=True)
+        player.car = pick_car(list(session.scalars(select(Player.car).where(Player.room_id == room.id))))
     session.add(player)
     try:
         session.commit()
     except IntegrityError:  # same nickname joined at the same moment
         session.rollback()
         raise taken
-    return {"player_id": str(player.id), "nickname": player.nickname, "avatar": player.avatar}
+    out = {"player_id": str(player.id), "nickname": player.nickname, "avatar": player.avatar}
+    if player.car is not None:  # racer rooms only; a classic join response is unchanged
+        out["car"] = player.car
+    return out
 
 
 @router.get("/rooms/{pin}")

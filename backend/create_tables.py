@@ -9,4 +9,8 @@ Base.metadata.create_all(engine)
 if engine.dialect.name == "postgresql":
     with engine.begin() as conn:
         conn.execute(text("ALTER TABLE game_results ADD COLUMN IF NOT EXISTS questions JSONB"))
+        conn.execute(text("ALTER TABLE game_rooms ADD COLUMN IF NOT EXISTS mode TEXT NOT NULL DEFAULT 'classic'"))
+        conn.execute(text("ALTER TABLE game_rooms ADD COLUMN IF NOT EXISTS mode_state JSONB NOT NULL DEFAULT '{}'::jsonb"))
+        conn.execute(text("ALTER TABLE players ADD COLUMN IF NOT EXISTS car TEXT"))
+        conn.execute(text("ALTER TABLE players ADD COLUMN IF NOT EXISTS finished_at TIMESTAMPTZ"))
 print("tables created")

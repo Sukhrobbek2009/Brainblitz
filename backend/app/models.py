@@ -104,6 +104,12 @@ class GameRoom(Base):
     current_question_index: Mapped[int | None] = mapped_column(Integer)
     # server clock time at which the current question was shown to everyone
     question_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # which game mode the room runs; every existing room is "classic", and mode_state is
+    # only ever read for a room whose mode is "blitz_racer"
+    mode: Mapped[str] = mapped_column(Text, nullable=False, server_default="classic", default="classic")
+    mode_state: Mapped[dict] = mapped_column(
+        JSON().with_variant(JSONB, "postgresql"), nullable=False, server_default=text("'{}'"), default=dict
+    )
 
 
 class Player(Base):
@@ -127,6 +133,9 @@ class Player(Base):
     # running total and current correct-in-a-row, updated as each answer is scored
     score: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0", default=0)
     streak: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0", default=0)
+    # Blitz Racer only: which car this player drives, and when they crossed the finish line
+    car: Mapped[str | None] = mapped_column(Text)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class AnswerLog(Base):
